@@ -162,29 +162,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3 text-[0.68rem] font-medium text-brand-muted">
-        <span className="h-px flex-1 bg-brand-divider" />
-        <span>OR</span>
-        <span className="h-px flex-1 bg-brand-divider" />
-      </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleMagicLink}
-        className="h-12 w-full rounded-full border-2 border-primary bg-card px-5 text-sm font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-      >
-        Request Magic Login Link
-      </Button>
-
-      <p
-        aria-live="polite"
-        className={`mt-2 min-h-4 text-center text-xs text-brand-success ${
-          statusMessage ? "visible" : "invisible"
-        }`}
-      >
-        {statusMessage || "Status"}
-      </p>
 
       <div className="mt-3 border-t border-brand-divider pt-4 text-center">
         <p className="text-sm text-brand-help">Need Help?</p>
