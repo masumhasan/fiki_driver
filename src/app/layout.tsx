@@ -5,6 +5,8 @@ import "./globals.css";
 const googleSansFlex = Google_Sans_Flex({
   variable: "--font-sans",
   subsets: ["latin"],
+  adjustFontFallback: false,
+  fallback: ["system-ui", "arial"],
 });
 
 export const metadata: Metadata = {
