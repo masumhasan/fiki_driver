@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { getDriverEarningsApi } from "@/lib/api";
 import {
   CalendarDays,
   Check,
@@ -85,6 +89,28 @@ const rides = [
 ];
 
 export function EarningsOverview() {
+  const [liveEarnings, setLiveEarnings] = useState<{ totalEarnings: number; totalRides: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = window.localStorage.getItem("fiki_auth_token");
+      if (token) {
+        getDriverEarningsApi(token).then((res) => {
+          if (res.success && res.data) {
+            setLiveEarnings({
+              totalEarnings: res.data.totalEarnings,
+              totalRides: res.data.totalRides,
+            });
+          }
+        });
+      }
+    }
+  }, []);
+
+  const totalEarningsDisplay = liveEarnings
+    ? `$${liveEarnings.totalEarnings.toFixed(2)}`
+    : "$1,240.00";
+
   return (
     <section aria-labelledby="earnings-title" className="space-y-5">
       <div className="flex justify-end">
@@ -108,7 +134,7 @@ export function EarningsOverview() {
               id="earnings-title"
               className="mt-2 text-4xl font-bold tracking-[-0.04em] text-secondary sm:text-5xl"
             >
-              $1,240.00
+              {totalEarningsDisplay}
             </h1>
             <p className="mt-2 text-xs text-white/50">Current Pay Period</p>
             <p className="mt-1 text-sm font-semibold">Jul 14 – Jul 27, 2026</p>

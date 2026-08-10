@@ -1,0 +1,128 @@
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
+export interface LoginResponse {
+  success: boolean;
+  data?: {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      phone?: string;
+      accountStatus: string;
+    };
+    token: string;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export async function loginApi(email: string, password: string): Promise<LoginResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Login API fetch error:", error);
+    return {
+      success: false,
+      error: {
+        code: "NETWORK_ERROR",
+        message: "Failed to connect to authentication server",
+      },
+    };
+  }
+}
+
+export async function getDriverProfileApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch driver profile" } };
+  }
+}
+
+export async function updateDriverAvailabilityApi(token: string, availabilityStatus: "OFFLINE" | "ONLINE" | "UNAVAILABLE") {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/availability`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ availabilityStatus }),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update availability" } };
+  }
+}
+
+export async function updateDriverLocationApi(token: string, latitude: number, longitude: number) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/location`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ latitude, longitude }),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update location" } };
+  }
+}
+
+export async function getDriverTripsApi(token: string, status?: string, page = 1, limit = 20) {
+  try {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (status) params.append("status", status);
+
+    const res = await fetch(`${API_BASE_URL}/drivers/me/trips?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch driver trips" } };
+  }
+}
+
+export async function updateDriverTripStatusApi(token: string, tripId: string, status: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update trip status" } };
+  }
+}
+
+export async function getDriverEarningsApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/earnings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch earnings" } };
+  }
+}

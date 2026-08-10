@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { getDriverTripsApi, updateDriverTripStatusApi } from "@/lib/api";
 import {
   Accessibility,
   ArrowRight,
@@ -306,6 +310,15 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
             View details
             <ArrowRight aria-hidden="true" className="size-3.5" />
           </Link>
+          {(trip as any).rawId && (trip as any).nextStatus && (
+            <button
+              type="button"
+              onClick={() => (trip as any).onStatusChange?.((trip as any).rawId, (trip as any).nextStatus)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/90"
+            >
+              {(trip as any).nextActionLabel}
+            </button>
+          )}
           <a
             href={trip.mapsUrl}
             target="_blank"
@@ -527,6 +540,84 @@ export function DashboardOverview() {
     day: "numeric",
   }).format(today);
 
+  const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
+
+  const fetchTrips = () => {
+    if (typeof window !== "undefined") {
+      const token = window.localStorage.getItem("fiki_auth_token");
+      if (token) {
+        getDriverTripsApi(token).then((res) => {
+          if (res.success && res.data && res.data.trips) {
+            const mapped = res.data.trips.map((t: any) => {
+              let uiStatus: TripStatus = "scheduled";
+              if (t.status === "COMPLETED") uiStatus = "completed";
+              else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+
+              let nextStatus = "";
+              let nextActionLabel = "";
+              if (t.status === "ACCEPTED") {
+                nextStatus = "DRIVER_ARRIVING";
+                nextActionLabel = "Mark Arriving";
+              } else if (t.status === "DRIVER_ARRIVING") {
+                nextStatus = "DRIVER_ARRIVED";
+                nextActionLabel = "Mark Arrived";
+              } else if (t.status === "DRIVER_ARRIVED") {
+                nextStatus = "IN_PROGRESS";
+                nextActionLabel = "Start Trip";
+              } else if (t.status === "IN_PROGRESS") {
+                nextStatus = "COMPLETED";
+                nextActionLabel = "Complete Trip";
+              }
+
+              const passengerName = t.passengerId?.name || "Passenger";
+              const initials = passengerName.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+
+              return {
+                id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
+                rawId: t._id,
+                status: uiStatus,
+                rideType: "One way",
+                time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Now",
+                passenger: passengerName,
+                initials,
+                mobility: "Standard",
+                pickup: t.pickupLocation?.address || "Pickup Address",
+                dropoff: t.dropoffLocation?.address || "Dropoff Address",
+                mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || "Miami")}`,
+                nextStatus,
+                nextActionLabel,
+              };
+            });
+            if (mapped.length > 0) {
+              setLiveTrips(mapped);
+            }
+          }
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  const handleStatusChange = async (tripId: string, nextStatus: string) => {
+    if (typeof window !== "undefined") {
+      const token = window.localStorage.getItem("fiki_auth_token");
+      if (token) {
+        const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
+        if (res.success) {
+          fetchTrips();
+        }
+      }
+    }
+  };
+
+  const activeTripList = (liveTrips || trips).map((t: any) => ({
+    ...t,
+    onStatusChange: handleStatusChange,
+  }));
+
   return (
     <section aria-labelledby="dashboard-title">
       <h1 id="dashboard-title" className="sr-only">
@@ -556,7 +647,7 @@ export function DashboardOverview() {
           </div>
 
           <div className="space-y-3">
-            {trips.map((trip, index) => (
+            {activeTripList.map((trip: any, index: number) => (
               <TripCard key={trip.id} trip={trip} index={index} />
             ))}
           </div>

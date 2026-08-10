@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { loginApi } from "@/lib/api";
 import { saveDriverSession } from "@/lib/mock-auth";
 
 const loginSchema = z.object({
@@ -39,11 +40,21 @@ export function LoginForm() {
     },
   });
 
+  const [apiError, setApiError] = useState("");
+
   async function handleLogin(values: LoginValues) {
-    setStatusMessage("");
-    await new Promise((resolve) => window.setTimeout(resolve, 550));
-    saveDriverSession(values.email);
-    router.replace("/dashboard");
+    setApiError("");
+    const res = await loginApi(values.email, values.password);
+
+    if (res.success && res.data) {
+      saveDriverSession(res.data.user.email);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("fiki_auth_token", res.data.token);
+      }
+      router.replace("/dashboard");
+    } else {
+      setApiError(res.error?.message || "Invalid email or password");
+    }
   }
 
   async function handleMagicLink() {
@@ -63,6 +74,11 @@ export function LoginForm() {
   return (
     <>
       <form onSubmit={handleSubmit(handleLogin)} noValidate>
+        {apiError && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-xs font-medium text-red-600 border border-red-200">
+            {apiError}
+          </div>
+        )}
         <div>
           <label
             htmlFor="email"
