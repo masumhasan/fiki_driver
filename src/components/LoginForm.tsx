@@ -180,29 +180,7 @@ export function LoginForm() {
 
 
 
-      <div className="mt-3 border-t border-brand-divider pt-4 text-center">
-        <p className="text-sm text-brand-help">Need Help?</p>
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-brand-navy">
-          <a
-            href="tel:+18003454825"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-secondary-foreground/70"
-          >
-            <Phone aria-hidden="true" className="size-3.5" />
-            (800) 345-4825
-          </a>
-          <span
-            aria-hidden="true"
-            className="hidden size-1 rounded-full bg-brand-dot sm:block"
-          />
-          <a
-            href="#liveChat"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-secondary-foreground/70"
-          >
-            <MessageSquare aria-hidden="true" className="size-3.5" />
-            Live Chat
-          </a>
-        </div>
-      </div>
+
     </>
   );
 }
