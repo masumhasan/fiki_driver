@@ -92,8 +92,9 @@ export function EarningsOverview() {
   const [liveEarnings, setLiveEarnings] = useState<{ totalEarnings: number; totalRides: number } | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const token = window.localStorage.getItem("fiki_auth_token");
+    import("@/lib/auth").then(({ getDriverSession }) => {
+      const session = getDriverSession();
+      const token = session?.token;
       if (token) {
         getDriverEarningsApi(token).then((res) => {
           if (res.success && res.data) {
@@ -104,7 +105,7 @@ export function EarningsOverview() {
           }
         });
       }
-    }
+    });
   }, []);
 
   const totalEarningsDisplay = liveEarnings

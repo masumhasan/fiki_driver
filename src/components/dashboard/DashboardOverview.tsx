@@ -543,8 +543,9 @@ export function DashboardOverview() {
   const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
 
   const fetchTrips = () => {
-    if (typeof window !== "undefined") {
-      const token = window.localStorage.getItem("fiki_auth_token");
+    import("@/lib/auth").then(({ getDriverSession }) => {
+      const session = getDriverSession();
+      const token = session?.token;
       if (token) {
         getDriverTripsApi(token).then((res) => {
           if (res.success && res.data && res.data.trips) {
@@ -594,7 +595,7 @@ export function DashboardOverview() {
           }
         });
       }
-    }
+    });
   };
 
   useEffect(() => {
@@ -602,13 +603,13 @@ export function DashboardOverview() {
   }, []);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
-    if (typeof window !== "undefined") {
-      const token = window.localStorage.getItem("fiki_auth_token");
-      if (token) {
-        const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
-        if (res.success) {
-          fetchTrips();
-        }
+    const { getDriverSession } = await import("@/lib/auth");
+    const session = getDriverSession();
+    const token = session?.token;
+    if (token) {
+      const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
+      if (res.success) {
+        fetchTrips();
       }
     }
   };

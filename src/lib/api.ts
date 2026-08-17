@@ -23,23 +23,26 @@ export async function loginApi(email: string, password: string): Promise<LoginRe
   try {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-
-    const data = await res.json();
-    return data;
-  } catch (error) {
-    console.error("Login API fetch error:", error);
+    return await res.json();
+  } catch {
     return {
       success: false,
-      error: {
-        code: "NETWORK_ERROR",
-        message: "Failed to connect to authentication server",
-      },
+      error: { code: "NETWORK_ERROR", message: "Failed to connect to authentication server" },
     };
+  }
+}
+
+export async function getMeApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch current user" } };
   }
 }
 
@@ -49,7 +52,7 @@ export async function getDriverProfileApi(token: string) {
       headers: { Authorization: `Bearer ${token}` },
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch driver profile" } };
   }
 }
@@ -58,14 +61,11 @@ export async function updateDriverAvailabilityApi(token: string, availabilitySta
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/availability`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ availabilityStatus }),
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update availability" } };
   }
 }
@@ -74,14 +74,11 @@ export async function updateDriverLocationApi(token: string, latitude: number, l
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/location`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ latitude, longitude }),
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update location" } };
   }
 }
@@ -90,12 +87,11 @@ export async function getDriverTripsApi(token: string, status?: string, page = 1
   try {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (status) params.append("status", status);
-
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch driver trips" } };
   }
 }
@@ -104,14 +100,11 @@ export async function updateDriverTripStatusApi(token: string, tripId: string, s
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/status`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status }),
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update trip status" } };
   }
 }
@@ -122,7 +115,7 @@ export async function getDriverEarningsApi(token: string) {
       headers: { Authorization: `Bearer ${token}` },
     });
     return await res.json();
-  } catch (error) {
+  } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch earnings" } };
   }
 }

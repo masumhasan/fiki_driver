@@ -20,7 +20,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { clearDriverSession } from "@/lib/mock-auth";
+import { clearDriverSession, getDriverSession, getInitials, formatVehicleLine, type DriverSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const primaryNavigation = [
@@ -78,6 +78,7 @@ type DashboardShellProps = {
 };
 
 type SidebarProps = {
+  session: DriverSession | null;
   onNavigate?: () => void;
 };
 
@@ -146,13 +147,27 @@ function NavigationLink({
   );
 }
 
-function Sidebar({ onNavigate }: SidebarProps) {
+function Sidebar({ session, onNavigate }: SidebarProps) {
   const router = useRouter();
+
   function signOut() {
     clearDriverSession();
     onNavigate?.();
     router.replace("/login");
   }
+
+  const vehicleMakeModel = formatVehicleLine(session?.vehicle);
+  const licensePlate = session?.vehicle?.licensePlate ?? "—";
+  const availabilityStatus = session?.availabilityStatus ?? "OFFLINE";
+
+  const statusConfig: Record<string, { label: string; className: string }> = {
+    ONLINE: { label: "On duty", className: "text-brand-success" },
+    OFFLINE: { label: "Off duty", className: "text-primary-foreground/50" },
+    ASSIGNED: { label: "Assigned", className: "text-secondary" },
+    UNAVAILABLE: { label: "Unavailable", className: "text-red-400" },
+  };
+  const status = statusConfig[availabilityStatus] ?? statusConfig.OFFLINE;
+
   return (
     <div className="flex h-full flex-col bg-primary text-primary-foreground">
       <div className="flex h-20 shrink-0 items-center border-b border-primary-foreground/10 px-5">
@@ -171,24 +186,27 @@ function Sidebar({ onNavigate }: SidebarProps) {
             <NavigationLink key={item.href} {...item} onNavigate={onNavigate} />
           ))}
         </div>
+
+        {/* Quick info — live vehicle data */}
         <p className="mt-7 px-3.5 pb-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-primary-foreground/35">
           Quick info
         </p>
         <div className="mx-1 rounded-2xl bg-primary-foreground/[0.06] p-3.5 text-xs text-primary-foreground/75">
           <p className="flex items-center gap-2">
             <CarFront className="size-3.5 text-secondary" />
-            Toyota Sienna
+            {vehicleMakeModel}
           </p>
           <p className="mt-2 flex items-center gap-2">
             <Hash className="size-3.5 text-secondary" />
-            MIA-4821
+            {licensePlate}
           </p>
-          <p className="mt-2 flex items-center gap-2">
-            <Activity className="size-3.5 text-brand-success" />
-            On duty
+          <p className={cn("mt-2 flex items-center gap-2", status.className)}>
+            <Activity className="size-3.5" />
+            {status.label}
           </p>
         </div>
       </nav>
+
       <div className="border-t border-primary-foreground/10 p-3">
         <Link
           href="/settings"
@@ -289,6 +307,7 @@ function NotificationsPopover({
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const [session, setSession] = useState<DriverSession | null>(null);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const mobileNavigationId = useId();
@@ -297,22 +316,36 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const isSchedulePage = pathname === "/schedule-attendance";
   const isEarningsPage = pathname === "/earnings";
 
+  // Load real session on mount
   useEffect(() => {
-    if (!isNavigationOpen) {
-      return;
-    }
+    setSession(getDriverSession());
+  }, []);
+
+  const driverFirstName = session?.name?.split(" ")[0] ?? "Driver";
+  const initials = session ? getInitials(session.name) : "—";
+  const shortName = session?.name?.split(" ")[0]
+    ? session.name.split(" ")[0] + (session.name.split(" ")[1]?.[0] ? " " + session.name.split(" ")[1][0] + "." : "")
+    : "Driver";
+
+  // Get current day + date
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  useEffect(() => {
+    if (!isNavigationOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsNavigationOpen(false);
-      }
+      if (event.key === "Escape") setIsNavigationOpen(false);
     }
 
     window.addEventListener("keydown", closeOnEscape);
-
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
@@ -320,16 +353,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
   }, [isNavigationOpen]);
 
   useEffect(() => {
-    if (!isNotificationsOpen) {
-      return;
-    }
+    if (!isNotificationsOpen) return;
 
     function closeNotifications(event: KeyboardEvent | PointerEvent) {
       if (event instanceof KeyboardEvent && event.key === "Escape") {
         setIsNotificationsOpen(false);
         return;
       }
-
       if (
         event instanceof PointerEvent &&
         notificationsRef.current &&
@@ -341,7 +371,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
     document.addEventListener("keydown", closeNotifications);
     document.addEventListener("pointerdown", closeNotifications);
-
     return () => {
       document.removeEventListener("keydown", closeNotifications);
       document.removeEventListener("pointerdown", closeNotifications);
@@ -351,7 +380,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="min-h-svh bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[15.5rem] lg:block">
-        <Sidebar />
+        <Sidebar session={session} />
       </aside>
 
       {isNavigationOpen && (
@@ -375,7 +404,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
             >
               <X aria-hidden="true" className="size-5" />
             </button>
-            <Sidebar onNavigate={() => setIsNavigationOpen(false)} />
+            <Sidebar
+              session={session}
+              onNavigate={() => setIsNavigationOpen(false)}
+            />
           </aside>
         </div>
       )}
@@ -398,14 +430,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <p className="truncate text-sm font-semibold text-foreground sm:text-base">
                   {isSchedulePage
                     ? "My Schedule & Attendance"
-                    : "Good morning, John 👋"}
+                    : `Good morning, ${driverFirstName} 👋`}
                 </p>
                 <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                   {isSchedulePage
                     ? "Track your shifts and view your upcoming schedule."
                     : isEarningsPage
                       ? "Here is an overview of your earnings this pay period."
-                      : "Thursday, July 16, 2026"}
+                      : today}
                 </p>
               </div>
             </div>
@@ -433,17 +465,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 )}
               </div>
 
+              {/* Live driver name/initials from session */}
               <button
                 type="button"
                 className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3"
                 aria-label="Open profile menu"
               >
                 <span className="grid size-7 place-items-center rounded-lg bg-secondary text-[0.7rem] font-bold text-secondary-foreground">
-                  JR
+                  {initials}
                 </span>
                 <span className="hidden text-left sm:block">
                   <span className="block text-xs font-semibold text-foreground">
-                    John R.
+                    {shortName}
                   </span>
                   <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">
                     Driver
