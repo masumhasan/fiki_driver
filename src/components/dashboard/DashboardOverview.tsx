@@ -468,7 +468,7 @@ function VehiclePanel() {
   );
 }
 
-function EmergencyPanel() {
+function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
   return (
     <section className="rounded-2xl border border-destructive/20 bg-destructive/4 p-4">
       <div className="flex items-center gap-2 text-destructive">
@@ -482,7 +482,7 @@ function EmergencyPanel() {
         Available 24 hours, 7 days a week
       </p>
       <a
-        href="tel:+18003454825"
+        href={`tel:${dispatchNumber}`}
         className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-destructive/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
       >
         <Phone aria-hidden="true" className="size-3.5" />
@@ -541,12 +541,20 @@ export function DashboardOverview() {
   }).format(today);
 
   const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
+  const [dispatchNumber, setDispatchNumber] = useState("+18003454825");
 
   const fetchTrips = () => {
     import("@/lib/auth").then(({ getDriverSession }) => {
       const session = getDriverSession();
       const token = session?.token;
       if (token) {
+        import("@/lib/api").then(({ getDispatchNumberApi }) => {
+          getDispatchNumberApi(token).then((res) => {
+            if (res.success && res.data) {
+              setDispatchNumber(res.data.dispatchNumber);
+            }
+          });
+        });
         getDriverTripsApi(token).then((res) => {
           if (res.success && res.data && res.data.trips) {
             const mapped = res.data.trips.map((t: any) => {
@@ -658,7 +666,7 @@ export function DashboardOverview() {
           <WorkingHoursPanel />
           <NextPickupPanel />
           <VehiclePanel />
-          <EmergencyPanel />
+          <EmergencyPanel dispatchNumber={dispatchNumber} />
           <NotificationsPanel />
         </aside>
       </div>
