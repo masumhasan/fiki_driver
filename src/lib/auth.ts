@@ -8,6 +8,8 @@ export type DriverSession = {
   phone?: string;
   role: string;
   accountStatus: string;
+  /** PENDING until admin approves; APPROVED once admin approves */
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
   /** Populated from DriverProfile after login */
   vehicle?: {
     make?: string;

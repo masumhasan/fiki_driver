@@ -66,6 +66,7 @@ export function LoginForm() {
       phone: user.phone,
       role: user.role,
       accountStatus: user.accountStatus,
+      approvalStatus: profileData?.approvalStatus ?? "PENDING",
       vehicle: profileData?.vehicle ?? undefined,
       availabilityStatus: profileData?.availabilityStatus ?? "OFFLINE",
     });
