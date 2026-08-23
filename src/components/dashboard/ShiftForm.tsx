@@ -1,11 +1,11 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { getDriverSession } from '@/lib/auth'
 import {
   ArrowLeftRight,
   Camera,
   Check,
-  ChevronDown,
   ChevronRight,
   CircleGauge,
   Fuel,
@@ -96,6 +96,13 @@ export function ShiftForm({
   const [photoName, setPhotoName] = useState('')
   const [error, setError] = useState('')
 
+  const session = getDriverSession()
+  const vehicle = session?.vehicle
+  const assignedVehicleText =
+    vehicle && (vehicle.make || vehicle.model || vehicle.licensePlate)
+      ? `${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}${vehicle.licensePlate ? ` - ${vehicle.licensePlate}` : ''}`
+      : 'Toyota Sienna - MIA-4821'
+
   const isStart = mode === 'start'
   const actionLabel = isStart
     ? 'Start Shift & Clock In'
@@ -145,15 +152,12 @@ export function ShiftForm({
         <form onSubmit={submitShift} className="space-y-4 p-5 sm:p-7">
           <section className="rounded-xl border border-border bg-muted/45 p-4 sm:p-5">
             <SectionTitle icon={ArrowLeftRight}>Assigned Vehicle</SectionTitle>
-            <label className="relative mt-3 block">
-              <span className="sr-only">Assigned vehicle</span>
-              <select className="h-11 w-full appearance-none rounded-lg border border-border bg-card px-4 pr-11 text-sm text-foreground shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15">
-                <option>Toyota Sienna - MIA-4821</option>
-                <option>Ford Transit - MIA-3087</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            </label>
+            <div className="mt-3 flex h-11 w-full items-center justify-between rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm">
+              <span>{assignedVehicleText}</span>
+              <LockKeyhole aria-hidden="true" className="size-4 text-muted-foreground" />
+            </div>
           </section>
+
 
           <div className="grid gap-5 sm:grid-cols-2">
             <section className="rounded-xl border border-border bg-muted/45 p-4 sm:min-h-60 sm:p-5">
