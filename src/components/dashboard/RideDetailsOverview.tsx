@@ -516,8 +516,11 @@ export function RideDetailsOverview() {
   // Data extraction
   const tripDisplayId = `TRP-${trip._id.substring(trip._id.length - 4).toUpperCase()}`;
   const passengerName = trip.fullName || trip.passengerId?.name || "Passenger";
-  const passengerPhone = trip.phoneNumber || trip.passengerId?.phone || "(305) 555-0192";
+  const passengerPhone = trip.phoneNumber || trip.passengerId?.phone || "";
+  const cleanPassengerPhone = passengerPhone ? passengerPhone.replace(/[^\d+]/g, "") : "";
   const passengerInitials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+
+
 
   const mobilityType = Array.isArray(trip.mobilityOptions) && trip.mobilityOptions.length > 0
     ? trip.mobilityOptions.join(", ")
@@ -629,7 +632,7 @@ export function RideDetailsOverview() {
             <span className="sm:hidden">Maps</span>
           </a>
           <a
-            href={`tel:${passengerPhone}`}
+            href={`tel:${cleanPassengerPhone || passengerPhone}`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-brand-success/25 bg-card px-3 text-xs font-semibold text-brand-success transition-colors hover:bg-brand-success/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Phone aria-hidden="true" className="size-3.5" />
@@ -650,12 +653,13 @@ export function RideDetailsOverview() {
                 {passengerName}
               </h2>
               <a
-                href={`tel:${passengerPhone}`}
+                href={`tel:${cleanPassengerPhone || passengerPhone}`}
                 className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Phone aria-hidden="true" className="size-3.5" />
-                {passengerPhone}
+                {passengerPhone || "—"}
               </a>
+
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/5 px-2.5 py-1 text-[0.68rem] font-medium text-primary">
                   <Accessibility aria-hidden="true" className="size-3" />
