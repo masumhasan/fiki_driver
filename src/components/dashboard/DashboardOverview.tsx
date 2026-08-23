@@ -230,9 +230,9 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
         className={cn(
           "absolute left-0 top-0 z-10 grid size-9 place-items-center rounded-full border-2 bg-card text-xs font-bold sm:size-10",
           trip.status === "inProgress" &&
-            "border-secondary bg-secondary text-secondary-foreground",
+          "border-secondary bg-secondary text-secondary-foreground",
           trip.status === "completed" &&
-            "border-brand-success bg-brand-success text-white",
+          "border-brand-success bg-brand-success text-white",
           trip.status === "scheduled" && "border-border text-muted-foreground",
         )}
       >
@@ -304,12 +304,13 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
 
         <div className="grid grid-cols-2 gap-2 border-t border-border bg-card p-3 sm:flex sm:justify-end">
           <Link
-            href="/ride-details"
+            href={`/ride-details?id=${(trip as any).rawId || trip.id}`}
             className="col-span-2 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:col-auto sm:mr-auto"
           >
             View details
             <ArrowRight aria-hidden="true" className="size-3.5" />
           </Link>
+
           {(trip as any).rawId && (trip as any).nextStatus && (
             <button
               type="button"
@@ -364,7 +365,7 @@ function WorkingHoursPanel() {
         <dl className="grid grid-cols-2 gap-2">
           {[
             ["Clock in", "7:15 AM"],
-            ["Est. clock out", "5:30 PM"],
+            ["Clock out", "5:30 PM"],
             ["Break", "12:00 PM"],
             ["Total", "9h 15m"],
           ].map(([label, value]) => (
@@ -654,35 +655,35 @@ export function DashboardOverview() {
 
   const dynamicSummaryItems: SummaryItem[] = liveTrips
     ? [
-        {
-          label: "Today's trips",
-          value: String(totalTrips),
-          detail: "Daily schedule",
-          icon: CalendarDays,
-          tone: "primary",
-        },
-        {
-          label: "Completed",
-          value: String(completedCount),
-          detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
-          icon: CheckCircle2,
-          tone: "success",
-        },
-        {
-          label: "Upcoming",
-          value: String(upcomingCount),
-          detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
-          icon: Clock3,
-          tone: "secondary",
-        },
-        {
-          label: "Total distance",
-          value: `${(totalTrips * 4.5).toFixed(1)} mi`,
-          detail: `Est. ${totalTrips * 15} min driving`,
-          icon: Route,
-          tone: "primary",
-        },
-      ]
+      {
+        label: "Today's trips",
+        value: String(totalTrips),
+        detail: "Daily schedule",
+        icon: CalendarDays,
+        tone: "primary",
+      },
+      {
+        label: "Completed",
+        value: String(completedCount),
+        detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
+        icon: CheckCircle2,
+        tone: "success",
+      },
+      {
+        label: "Upcoming",
+        value: String(upcomingCount),
+        detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
+        icon: Clock3,
+        tone: "secondary",
+      },
+      {
+        label: "Total distance",
+        value: `${(totalTrips * 4.5).toFixed(1)} mi`,
+        detail: `Est. ${totalTrips * 15} min driving`,
+        icon: Route,
+        tone: "primary",
+      },
+    ]
     : summaryItems;
 
   return (

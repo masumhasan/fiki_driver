@@ -96,6 +96,30 @@ export async function getDriverTripsApi(token: string, status?: string, page = 1
   }
 }
 
+export async function getDriverTripByIdApi(token: string, tripId: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch driver trip details" } };
+  }
+}
+
+export async function updateDriverTripNotesApi(token: string, tripId: string, driverNotes: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/notes`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ driverNotes }),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update trip notes" } };
+  }
+}
+
 export async function updateDriverTripStatusApi(token: string, tripId: string, status: string) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/status`, {
@@ -108,6 +132,7 @@ export async function updateDriverTripStatusApi(token: string, tripId: string, s
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update trip status" } };
   }
 }
+
 
 export async function getDriverEarningsApi(token: string) {
   try {

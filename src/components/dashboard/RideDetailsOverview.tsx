@@ -1,4 +1,14 @@
-import { cn } from '@/lib/utils'
+"use client";
+
+import { useEffect, useState } from "react";
+import { getDriverSession } from "@/lib/auth";
+import {
+  getDriverTripsApi,
+  getDriverTripByIdApi,
+  updateDriverTripStatusApi,
+  updateDriverTripNotesApi,
+} from "@/lib/api";
+import { cn } from "@/lib/utils";
 import {
   Accessibility,
   ArrowLeft,
@@ -18,50 +28,27 @@ import {
   Save,
   ShieldAlert,
   UserRound,
-} from 'lucide-react'
-import Link from 'next/link'
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
 
 type DetailItem = {
-  label: string
-  value: string
-}
+  label: string;
+  value: string;
+};
 
 type SectionHeaderProps = {
-  icon: LucideIcon
-  title: string
-}
-
-const passengerDetails: DetailItem[] = [
-  { label: 'Full name', value: 'Margaret Johnson' },
-  { label: 'Phone number', value: '(305) 555-0192' },
-  { label: 'Mobility type', value: 'Wheelchair' },
-  { label: 'Additional attendant', value: 'No' },
-]
-
-const tripDetails: DetailItem[] = [
-  { label: 'Assigned driver', value: 'John Rivera' },
-  { label: 'Assigned vehicle', value: 'Toyota Sienna · MIA-4821' },
-  { label: 'Trip distance', value: '3.2 mi' },
-  { label: 'Estimated duration', value: '18 min' },
-  { label: 'Recurring schedule', value: 'Mon / Wed / Fri' },
-]
-
-const tripStatuses = [
-  { label: 'Assigned', state: 'complete' },
-  { label: 'Accepted', state: 'complete' },
-  { label: 'Heading to pickup', state: 'complete' },
-  { label: 'Passenger picked up', state: 'current' },
-  { label: 'Heading to destination', state: 'upcoming' },
-  { label: 'Trip completed', state: 'upcoming' },
-] as const
+  icon: LucideIcon;
+  title: string;
+};
 
 const quickNotes = [
-  'Passenger late',
-  'Traffic delay',
-  'No issues',
-  'Wheelchair assistance',
-  'Facility delay',
-]
+  "Passenger late",
+  "Traffic delay",
+  "No issues",
+  "Wheelchair assistance",
+  "Facility delay",
+];
 
 function SectionHeader({ icon: Icon, title }: SectionHeaderProps) {
   return (
@@ -71,23 +58,23 @@ function SectionHeader({ icon: Icon, title }: SectionHeaderProps) {
       </span>
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
     </div>
-  )
+  );
 }
 
 function DetailGrid({
   details,
-  columns = 'three',
+  columns = "three",
 }: {
-  details: DetailItem[]
-  columns?: 'two' | 'three'
+  details: DetailItem[];
+  columns?: "two" | "three";
 }) {
   return (
     <dl
       className={cn(
-        'grid gap-x-6 gap-y-4',
-        columns === 'three'
-          ? 'sm:grid-cols-2 lg:grid-cols-3'
-          : 'sm:grid-cols-2',
+        "grid gap-x-6 gap-y-4",
+        columns === "three"
+          ? "sm:grid-cols-2 lg:grid-cols-3"
+          : "sm:grid-cols-2",
       )}
     >
       {details.map((detail) => (
@@ -101,7 +88,7 @@ function DetailGrid({
         </div>
       ))}
     </dl>
-  )
+  );
 }
 
 function LocationCard({
@@ -114,28 +101,34 @@ function LocationCard({
   title,
   type,
   zip,
+  onAction,
+  actionText,
+  actionDisabled,
 }: {
-  address: string
-  city: string
-  contact: string
-  contactLabel: string
-  facility: string
-  instructions?: string
-  title: string
-  type: 'pickup' | 'dropoff'
-  zip: string
+  address: string;
+  city: string;
+  contact: string;
+  contactLabel: string;
+  facility: string;
+  instructions?: string;
+  title: string;
+  type: "pickup" | "dropoff";
+  zip: string;
+  onAction?: () => void;
+  actionText?: string;
+  actionDisabled?: boolean;
 }) {
-  const isPickup = type === 'pickup'
+  const isPickup = type === "pickup";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3.5 sm:px-5">
         <span
           className={cn(
-            'grid size-7 place-items-center rounded-lg',
+            "grid size-7 place-items-center rounded-lg",
             isPickup
-              ? 'bg-brand-success/10 text-brand-success'
-              : 'bg-secondary/16 text-brand-yellow-hover',
+              ? "bg-brand-success/10 text-brand-success"
+              : "bg-secondary/16 text-brand-yellow-hover",
           )}
         >
           {isPickup ? (
@@ -163,7 +156,7 @@ function LocationCard({
           </p>
           <p className="mt-1 text-xs leading-5 text-foreground">{address}</p>
           <p className="text-xs leading-5 text-muted-foreground">
-            {city}, FL {zip}
+            {city} {zip}
           </p>
         </div>
 
@@ -186,127 +179,108 @@ function LocationCard({
             {contact}
           </p>
         </div>
-        <button
-          type="button"
-          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-secondary text-xs font-bold text-secondary-foreground shadow-[0_4px_10px_rgba(255,189,32,0.28)] transition-colors hover:bg-brand-yellow-hover"
-        >
-          {isPickup ? 'Start pickup' : 'Complete drop-off'}
-        </button>
+        {actionText && (
+          <button
+            type="button"
+            disabled={actionDisabled}
+            onClick={onAction}
+            className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-secondary text-xs font-bold text-secondary-foreground shadow-[0_4px_10px_rgba(255,189,32,0.28)] transition-colors hover:bg-brand-yellow-hover disabled:opacity-50"
+          >
+            {actionText}
+          </button>
+        )}
       </div>
     </section>
-  )
+  );
 }
 
-function _RoutePreview() {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <SectionHeader icon={MapIcon} title="Route overview" />
-      <div className="p-4 sm:p-5">
-        <div
-          className="relative h-56 overflow-hidden rounded-2xl bg-muted"
-          role="img"
-          aria-label="Route preview from Sunrise Senior Living to Jackson Memorial Hospital"
-        >
-          <div className="absolute inset-4 grid grid-cols-4 gap-3 opacity-70">
-            {Array.from({ length: 12 }, (_, index) => (
-              <span
-                key={`map-block-${index + 1}`}
-                className="rounded-lg border border-border bg-card"
-              />
-            ))}
-          </div>
+function TripStatusPanel({
+  status,
+  onNextStatus,
+  nextActionText,
+}: {
+  status: string;
+  onNextStatus?: () => void;
+  nextActionText?: string;
+}) {
+  const getStepStates = (currentStatus: string) => {
+    switch (currentStatus) {
+      case "ACCEPTED":
+        return [
+          { label: "Assigned", state: "complete" },
+          { label: "Accepted", state: "complete" },
+          { label: "Heading to pickup", state: "current" },
+          { label: "Passenger picked up", state: "upcoming" },
+          { label: "Heading to destination", state: "upcoming" },
+          { label: "Trip completed", state: "upcoming" },
+        ];
+      case "DRIVER_ARRIVING":
+      case "DRIVER_ARRIVED":
+        return [
+          { label: "Assigned", state: "complete" },
+          { label: "Accepted", state: "complete" },
+          { label: "Heading to pickup", state: "complete" },
+          { label: "Passenger picked up", state: "current" },
+          { label: "Heading to destination", state: "upcoming" },
+          { label: "Trip completed", state: "upcoming" },
+        ];
+      case "IN_PROGRESS":
+        return [
+          { label: "Assigned", state: "complete" },
+          { label: "Accepted", state: "complete" },
+          { label: "Heading to pickup", state: "complete" },
+          { label: "Passenger picked up", state: "complete" },
+          { label: "Heading to destination", state: "current" },
+          { label: "Trip completed", state: "upcoming" },
+        ];
+      case "COMPLETED":
+        return [
+          { label: "Assigned", state: "complete" },
+          { label: "Accepted", state: "complete" },
+          { label: "Heading to pickup", state: "complete" },
+          { label: "Passenger picked up", state: "complete" },
+          { label: "Heading to destination", state: "complete" },
+          { label: "Trip completed", state: "complete" },
+        ];
+      default:
+        return [
+          { label: "Assigned", state: "complete" },
+          { label: "Accepted", state: "complete" },
+          { label: "Heading to pickup", state: "upcoming" },
+          { label: "Passenger picked up", state: "upcoming" },
+          { label: "Heading to destination", state: "upcoming" },
+          { label: "Trip completed", state: "upcoming" },
+        ];
+    }
+  };
 
-          <div className="absolute left-[20%] top-[62%] h-1 w-[30%] rounded-full bg-secondary" />
-          <div className="absolute left-[49%] top-[39%] h-[24%] w-1 rounded-full bg-secondary" />
-          <div className="absolute left-[49%] top-[38%] h-1 w-[28%] rounded-full bg-secondary" />
+  const steps = getStepStates(status);
 
-          <span className="absolute left-[16%] top-[56%] grid size-10 place-items-center rounded-full bg-primary text-primary-foreground ring-4 ring-card">
-            <MapPin aria-hidden="true" className="size-4" />
-          </span>
-          <span className="absolute right-[17%] top-[31%] grid size-10 place-items-center rounded-full bg-secondary text-secondary-foreground ring-4 ring-card">
-            <Building2 aria-hidden="true" className="size-4" />
-          </span>
-          <span className="absolute left-1/2 top-[30%] grid size-9 -translate-x-1/2 place-items-center rounded-xl border border-border bg-card text-primary">
-            <CarFront aria-hidden="true" className="size-4" />
-          </span>
-
-          <span className="absolute bottom-3 left-3 rounded-lg bg-primary px-2.5 py-1.5 text-[0.68rem] font-semibold text-primary-foreground">
-            3.2 mi · 18 min
-          </span>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-xl bg-muted p-3">
-          <div className="px-2 first:pl-0">
-            <dt className="text-[0.65rem] text-muted-foreground">Distance</dt>
-            <dd className="mt-1 text-xs font-semibold text-foreground">
-              3.2 mi
-            </dd>
-          </div>
-          <div className="px-3">
-            <dt className="text-[0.65rem] text-muted-foreground">Duration</dt>
-            <dd className="mt-1 text-xs font-semibold text-foreground">
-              18 min
-            </dd>
-          </div>
-          <div className="px-3 last:pr-0">
-            <dt className="text-[0.65rem] text-muted-foreground">Traffic</dt>
-            <dd className="mt-1 text-xs font-semibold text-brand-success">
-              Clear
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <a
-            href="https://www.google.com/maps/dir/?api=1&origin=1204%20NW%2014th%20Ave%20Miami%20FL&destination=1611%20NW%2012th%20Ave%20Miami%20FL"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <ExternalLink aria-hidden="true" className="size-3.5" />
-            Open Google Maps
-          </a>
-          <a
-            href="https://www.google.com/maps/dir/?api=1&origin=1204%20NW%2014th%20Ave%20Miami%20FL&destination=1611%20NW%2012th%20Ave%20Miami%20FL&travelmode=driving"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-secondary text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Navigation aria-hidden="true" className="size-3.5" />
-            Start navigation
-          </a>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TripStatusPanel() {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <SectionHeader icon={Route} title="Trip status" />
       <div className="p-4 sm:p-5">
         <ol>
-          {tripStatuses.map((status, index) => {
-            const isComplete = status.state === 'complete'
-            const isCurrent = status.state === 'current'
-            const isLast = index === tripStatuses.length - 1
+          {steps.map((step, index) => {
+            const isComplete = step.state === "complete";
+            const isCurrent = step.state === "current";
+            const isLast = index === steps.length - 1;
 
             return (
               <li
-                key={status.label}
+                key={step.label}
                 className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2.5"
               >
                 <div className="flex flex-col items-center">
                   <span
                     className={cn(
-                      'grid size-6 place-items-center rounded-full border',
+                      "grid size-6 place-items-center rounded-full border",
                       isComplete &&
-                        'border-brand-success bg-brand-success text-primary-foreground',
+                        "border-brand-success bg-brand-success text-primary-foreground",
                       isCurrent &&
-                        'border-secondary bg-secondary text-secondary-foreground',
-                      status.state === 'upcoming' &&
-                        'border-border bg-card text-muted-foreground',
+                        "border-secondary bg-secondary text-secondary-foreground",
+                      step.state === "upcoming" &&
+                        "border-border bg-card text-muted-foreground",
                     )}
                   >
                     {isComplete ? (
@@ -314,8 +288,8 @@ function TripStatusPanel() {
                     ) : (
                       <span
                         className={cn(
-                          'size-1.5 rounded-full',
-                          isCurrent ? 'bg-secondary-foreground' : 'bg-border',
+                          "size-1.5 rounded-full",
+                          isCurrent ? "bg-secondary-foreground" : "bg-border",
                         )}
                       />
                     )}
@@ -323,23 +297,23 @@ function TripStatusPanel() {
                   {!isLast && (
                     <span
                       className={cn(
-                        'min-h-5 w-px flex-1',
-                        isComplete ? 'bg-brand-success' : 'bg-border',
+                        "min-h-5 w-px flex-1",
+                        isComplete ? "bg-brand-success" : "bg-border",
                       )}
                     />
                   )}
                 </div>
 
-                <div className={cn('pb-4 pt-0.5', isLast && 'pb-0')}>
+                <div className={cn("pb-4 pt-0.5", isLast && "pb-0")}>
                   <p
                     className={cn(
-                      'text-xs font-medium',
-                      status.state === 'upcoming'
-                        ? 'text-muted-foreground'
-                        : 'text-foreground',
+                      "text-xs font-medium",
+                      step.state === "upcoming"
+                        ? "text-muted-foreground"
+                        : "text-foreground",
                     )}
                   >
-                    {status.label}
+                    {step.label}
                   </p>
                   {isCurrent && (
                     <p className="mt-1 text-[0.68rem] font-medium text-brand-yellow-hover">
@@ -348,23 +322,52 @@ function TripStatusPanel() {
                   )}
                 </div>
               </li>
-            )
+            );
           })}
         </ol>
 
-        <button
-          type="button"
-          className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          Mark heading to destination
-          <ArrowLeft aria-hidden="true" className="size-3.5 rotate-180" />
-        </button>
+        {nextActionText && (
+          <button
+            type="button"
+            onClick={onNextStatus}
+            className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {nextActionText}
+            <ArrowLeft aria-hidden="true" className="size-3.5 rotate-180" />
+          </button>
+        )}
       </div>
     </section>
-  )
+  );
 }
 
-function DriverNotes() {
+function DriverNotes({
+  initialNotes,
+  onSave,
+}: {
+  initialNotes: string;
+  onSave: (notes: string) => Promise<void>;
+}) {
+  const [notes, setNotes] = useState(initialNotes);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
+
+  useEffect(() => {
+    setNotes(initialNotes);
+  }, [initialNotes]);
+
+  const handleAddQuickNote = (quick: string) => {
+    setNotes((prev) => (prev ? `${prev}. ${quick}` : quick));
+  };
+
+  const handleSaveNotes = async () => {
+    setSaving(true);
+    await onSave(notes);
+    setSaving(false);
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 3000);
+  };
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <SectionHeader icon={FileText} title="Driver notes" />
@@ -378,6 +381,7 @@ function DriverNotes() {
               <button
                 key={note}
                 type="button"
+                onClick={() => handleAddQuickNote(note)}
                 className="rounded-full border border-border bg-card px-3 py-1.5 text-[0.68rem] font-medium text-muted-foreground transition-colors hover:border-primary/20 hover:bg-primary/5 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {note}
@@ -396,23 +400,193 @@ function DriverNotes() {
           id="driver-notes"
           name="driverNotes"
           rows={4}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
           placeholder="Add trip notes, observations, or issues..."
           className="mt-2 w-full resize-y rounded-xl border border-input bg-muted px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-ring focus:ring-3 focus:ring-ring/12"
         />
 
         <button
           type="button"
-          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          disabled={saving}
+          onClick={handleSaveNotes}
+          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
         >
           <Save aria-hidden="true" className="size-3.5" />
-          Save notes
+          {saving ? "Saving..." : savedMsg ? "Notes saved!" : "Save notes"}
         </button>
       </div>
     </section>
-  )
+  );
 }
 
 export function RideDetailsOverview() {
+  const [trip, setTrip] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTrip = async () => {
+    if (typeof window === "undefined") return;
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const queryId = new URLSearchParams(window.location.search).get("id");
+
+    try {
+      if (queryId) {
+        const res = await getDriverTripByIdApi(token, queryId);
+        if (res.success && res.data) {
+          setTrip(res.data);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const res = await getDriverTripsApi(token);
+      if (res.success && res.data && Array.isArray(res.data.trips) && res.data.trips.length > 0) {
+        setTrip(res.data.trips[0]);
+      }
+    } catch {
+      // error handling fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrip();
+  }, []);
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!trip) return;
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) return;
+    const res = await updateDriverTripStatusApi(token, trip._id, newStatus);
+    if (res.success) {
+      fetchTrip();
+    }
+  };
+
+  const handleSaveNotes = async (newNotes: string) => {
+    if (!trip) return;
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) return;
+    await updateDriverTripNotesApi(token, trip._id, newNotes);
+    fetchTrip();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-3">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-sm font-semibold text-muted-foreground">Loading ride details...</p>
+      </div>
+    );
+  }
+
+  const session = getDriverSession();
+  const driverName = session?.name || "Driver";
+  const vehicleObj = session?.vehicle;
+  const vehicleStr = vehicleObj
+    ? `${[vehicleObj.make, vehicleObj.model].filter(Boolean).join(" ")} · ${vehicleObj.licensePlate || "—"}`
+    : "Toyota Sienna · MIA-4821";
+
+  if (!trip) {
+    return (
+      <section className="mx-auto w-full max-w-6xl p-10 text-center">
+        <div className="rounded-2xl border border-border bg-card p-10 shadow-sm">
+          <p className="text-base font-bold text-foreground">No Ride Details Available</p>
+          <p className="mt-1 text-xs text-muted-foreground">You currently have no active or scheduled rides assigned.</p>
+          <Link
+            href="/dashboard"
+            className="mt-6 inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  // Data extraction
+  const tripDisplayId = `TRP-${trip._id.substring(trip._id.length - 4).toUpperCase()}`;
+  const passengerName = trip.fullName || trip.passengerId?.name || "Passenger";
+  const passengerPhone = trip.phoneNumber || trip.passengerId?.phone || "(305) 555-0192";
+  const passengerInitials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+
+  const mobilityType = Array.isArray(trip.mobilityOptions) && trip.mobilityOptions.length > 0
+    ? trip.mobilityOptions.join(", ")
+    : "Wheelchair";
+  const tripType = trip.tripType || "One way";
+
+  const pickupAddress = trip.pickupLocation?.address || trip.streetAddress || "1204 NW 14th Ave, Miami, FL";
+  const dropoffAddress = trip.dropoffLocation?.address || trip.returnDestinationAddress || "1611 NW 12th Ave, Miami, FL";
+
+  const pickupDateStr = trip.pickupDate
+    ? new Date(trip.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : new Date(trip.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const pickupTimeStr = trip.pickupTime || "8:00 AM";
+  const dropoffTimeStr = trip.appointmentTime || "8:45 AM";
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupAddress)}&destination=${encodeURIComponent(dropoffAddress)}`;
+
+  // Determine status button & status badge
+  let statusBadgeLabel = "In progress";
+  let pickupActionText = "";
+  let pickupActionNext = "";
+  let dropoffActionText = "";
+  let dropoffActionNext = "";
+  let nextStatusText = "";
+  let nextStatusVal = "";
+
+  if (trip.status === "ACCEPTED") {
+    statusBadgeLabel = "Accepted";
+    pickupActionText = "Start pickup";
+    pickupActionNext = "DRIVER_ARRIVING";
+    nextStatusText = "Mark heading to pickup";
+    nextStatusVal = "DRIVER_ARRIVING";
+  } else if (trip.status === "DRIVER_ARRIVING") {
+    statusBadgeLabel = "Heading to pickup";
+    pickupActionText = "Mark Arrived";
+    pickupActionNext = "DRIVER_ARRIVED";
+    nextStatusText = "Mark arrived at pickup";
+    nextStatusVal = "DRIVER_ARRIVED";
+  } else if (trip.status === "DRIVER_ARRIVED") {
+    statusBadgeLabel = "Arrived at pickup";
+    pickupActionText = "Pick up passenger";
+    pickupActionNext = "IN_PROGRESS";
+    nextStatusText = "Pick up passenger";
+    nextStatusVal = "IN_PROGRESS";
+  } else if (trip.status === "IN_PROGRESS") {
+    statusBadgeLabel = "In progress";
+    dropoffActionText = "Complete drop-off";
+    dropoffActionNext = "COMPLETED";
+    nextStatusText = "Mark heading to destination";
+    nextStatusVal = "COMPLETED";
+  } else if (trip.status === "COMPLETED") {
+    statusBadgeLabel = "Completed";
+  }
+
+  const passengerDetails: DetailItem[] = [
+    { label: "Full name", value: passengerName },
+    { label: "Phone number", value: passengerPhone },
+    { label: "Mobility type", value: mobilityType },
+    { label: "Additional attendant", value: trip.additionalAttendant ? "Yes" : "No" },
+  ];
+
+  const tripDetailsList: DetailItem[] = [
+    { label: "Assigned driver", value: driverName },
+    { label: "Assigned vehicle", value: vehicleStr },
+    { label: "Trip distance", value: "3.2 mi" },
+    { label: "Estimated duration", value: "18 min" },
+    { label: "Recurring schedule", value: trip.schedule || "One-time trip" },
+  ];
+
   return (
     <section
       aria-labelledby="ride-details-title"
@@ -434,10 +608,10 @@ export function RideDetailsOverview() {
                 id="ride-details-title"
                 className="text-base font-bold tracking-tight text-foreground"
               >
-                TRP-2847
+                {tripDisplayId}
               </h1>
               <span className="rounded-full border border-secondary/50 bg-secondary/14 px-2.5 py-1 text-[0.68rem] font-semibold text-secondary-foreground">
-                In progress
+                {statusBadgeLabel}
               </span>
             </div>
           </div>
@@ -445,7 +619,7 @@ export function RideDetailsOverview() {
 
         <div className="flex gap-2">
           <a
-            href="https://www.google.com/maps/dir/?api=1&origin=1204%20NW%2014th%20Ave%20Miami%20FL&destination=1611%20NW%2012th%20Ave%20Miami%20FL"
+            href={mapsUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-card px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -455,7 +629,7 @@ export function RideDetailsOverview() {
             <span className="sm:hidden">Maps</span>
           </a>
           <a
-            href="tel:+13055550192"
+            href={`tel:${passengerPhone}`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-brand-success/25 bg-card px-3 text-xs font-semibold text-brand-success transition-colors hover:bg-brand-success/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Phone aria-hidden="true" className="size-3.5" />
@@ -469,27 +643,27 @@ export function RideDetailsOverview() {
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3.5">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary/20 text-sm font-bold text-secondary-foreground">
-              MJ
+              {passengerInitials}
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold tracking-tight text-foreground">
-                Margaret Johnson
+                {passengerName}
               </h2>
               <a
-                href="tel:+13055550192"
+                href={`tel:${passengerPhone}`}
                 className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Phone aria-hidden="true" className="size-3.5" />
-                (305) 555-0192
+                {passengerPhone}
               </a>
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/5 px-2.5 py-1 text-[0.68rem] font-medium text-primary">
                   <Accessibility aria-hidden="true" className="size-3" />
-                  Wheelchair
+                  {mobilityType}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[0.68rem] font-medium text-muted-foreground">
                   <Route aria-hidden="true" className="size-3" />
-                  One way
+                  {tripType}
                 </span>
               </div>
             </div>
@@ -499,19 +673,19 @@ export function RideDetailsOverview() {
             <div>
               <dt className="text-[0.65rem] text-muted-foreground">Date</dt>
               <dd className="mt-1 text-xs font-semibold text-foreground">
-                Jul 24, 2026
+                {pickupDateStr}
               </dd>
             </div>
             <div>
               <dt className="text-[0.65rem] text-muted-foreground">Pickup</dt>
               <dd className="mt-1 text-xs font-semibold text-foreground">
-                8:00 AM
+                {pickupTimeStr}
               </dd>
             </div>
             <div>
               <dt className="text-[0.65rem] text-muted-foreground">Drop-off</dt>
               <dd className="mt-1 text-xs font-semibold text-foreground">
-                8:45 AM
+                {dropoffTimeStr}
               </dd>
             </div>
           </dl>
@@ -522,23 +696,27 @@ export function RideDetailsOverview() {
         <LocationCard
           type="pickup"
           title="Pickup information"
-          facility="Sunrise Senior Living"
-          address="1204 NW 14th Ave"
+          facility={trip.pickupFacility || "Sunrise Senior Living"}
+          address={pickupAddress}
           city="Miami"
           zip="33125"
-          instructions="Call upon arrival. Use the main entrance on the west side."
+          instructions={trip.specialInstructions || trip.accessInformation || "Call upon arrival. Use the main entrance on the west side."}
           contactLabel="Pickup contact"
-          contact="Front Desk · (305) 555-0193"
+          contact={`Front Desk · ${passengerPhone}`}
+          actionText={pickupActionText}
+          onAction={() => handleStatusChange(pickupActionNext)}
         />
         <LocationCard
           type="dropoff"
           title="Drop-off information"
-          facility="Jackson Memorial Hospital"
-          address="1611 NW 12th Ave"
+          facility={trip.dropoffFacility || "Jackson Memorial Hospital"}
+          address={dropoffAddress}
           city="Miami"
           zip="33136"
           contactLabel="Destination contact"
-          contact="Admissions · (305) 555-0140"
+          contact={trip.emergencyContactPhone ? `${trip.emergencyContactName || "Admissions"} · ${trip.emergencyContactPhone}` : "Admissions · (305) 555-0140"}
+          actionText={dropoffActionText}
+          onAction={() => handleStatusChange(dropoffActionNext)}
         />
       </div>
 
@@ -554,7 +732,7 @@ export function RideDetailsOverview() {
                   <p className="text-[0.68rem] font-semibold">Medical note</p>
                 </div>
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  Passenger requires an oxygen tank during transit.
+                  {trip.specialInstructions || trip.accessInformation || "Passenger requires standard transit assistance."}
                 </p>
               </div>
               <div className="rounded-xl border border-primary/12 bg-primary/4 p-3">
@@ -565,7 +743,7 @@ export function RideDetailsOverview() {
                   </p>
                 </div>
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  Linda Johnson · (305) 555-0198
+                  {trip.emergencyContactName ? `${trip.emergencyContactName} · ${trip.emergencyContactPhone}` : "Linda Johnson · (305) 555-0198"}
                 </p>
               </div>
             </div>
@@ -575,9 +753,9 @@ export function RideDetailsOverview() {
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
           <SectionHeader icon={ClipboardList} title="Trip information" />
           <div className="p-4 sm:p-5">
-            <DetailGrid details={tripDetails} columns="three" />
+            <DetailGrid details={tripDetailsList} columns="three" />
             <a
-              href="https://www.google.com/maps/dir/?api=1&origin=1204%20NW%2014th%20Ave%20Miami%20FL&destination=1611%20NW%2012th%20Ave%20Miami%20FL"
+              href={mapsUrl}
               target="_blank"
               rel="noreferrer"
               className="mx-auto mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-6 text-xs font-bold text-secondary-foreground hover:bg-brand-yellow-hover sm:w-auto"
@@ -590,12 +768,19 @@ export function RideDetailsOverview() {
       </div>
 
       <div className="mt-4">
-        <TripStatusPanel />
+        <TripStatusPanel
+          status={trip.status}
+          onNextStatus={() => nextStatusVal && handleStatusChange(nextStatusVal)}
+          nextActionText={nextStatusText}
+        />
       </div>
 
       <div className="mt-4">
-        <DriverNotes />
+        <DriverNotes
+          initialNotes={trip.driverNotes || ""}
+          onSave={handleSaveNotes}
+        />
       </div>
     </section>
-  )
+  );
 }
