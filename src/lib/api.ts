@@ -145,6 +145,44 @@ export async function getDriverEarningsApi(token: string) {
   }
 }
 
+export async function getTodayShiftApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/today`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch shift status" } };
+  }
+}
+
+export async function startShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string }) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to start shift" } };
+  }
+}
+
+export async function endShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string }) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/end`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to end shift" } };
+  }
+}
+
+
 export async function getDispatchNumberApi(token: string) {
   try {
     const res = await fetch(`${API_BASE_URL}/settings/dispatch-number`, {

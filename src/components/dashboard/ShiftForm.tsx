@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { getDriverSession } from '@/lib/auth'
+import { startShiftApi, endShiftApi } from '@/lib/api'
 import {
   ArrowLeftRight,
   Camera,
@@ -16,6 +17,7 @@ import {
   Sparkles,
   TriangleAlert,
   X,
+  Loader2,
 } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
@@ -83,18 +85,31 @@ function SectionTitle({
 export function ShiftForm({
   mode,
   onClose,
+  onSuccess,
+  startOdometerVal,
 }: {
   mode: ShiftMode
   onClose: () => void
+  onSuccess?: () => void
+  startOdometerVal?: number
 }) {
   const uploadId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [odometer, setOdometer] = useState('58,742')
+  const isStart = mode === 'start'
+  
+  const initialOdo = isStart
+    ? '58,742'
+    : startOdometerVal
+      ? String(startOdometerVal + 42.6)
+      : '58,784.6'
+
+  const [odometer, setOdometer] = useState(initialOdo)
   const [fuel, setFuel] = useState('half')
   const [condition, setCondition] = useState<Condition>('clear')
   const [notes, setNotes] = useState('')
   const [photoName, setPhotoName] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const session = getDriverSession()
   const vehicle = session?.vehicle
@@ -103,20 +118,51 @@ export function ShiftForm({
       ? `${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}${vehicle.licensePlate ? ` - ${vehicle.licensePlate}` : ''}`
       : 'Toyota Sienna - MIA-4821'
 
-  const isStart = mode === 'start'
   const actionLabel = isStart
     ? 'Start Shift & Clock In'
     : 'End Shift & Clock Out'
 
-  function submitShift(event: React.FormEvent<HTMLFormElement>) {
+  // Calculate live estimated miles for end shift modal
+  const numEndOdo = parseFloat(odometer.replace(/[^\d.]/g, ''))
+  const numStartOdo = startOdometerVal || 58742
+  const estimatedMilesDisplay =
+    !isNaN(numEndOdo) && numEndOdo >= numStartOdo
+      ? (numEndOdo - numStartOdo).toFixed(1)
+      : '42.6'
+
+  async function submitShift(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!odometer.replace(/\D/g, '')) {
+    const rawNum = odometer.replace(/[^\d.]/g, '')
+    if (!rawNum || isNaN(parseFloat(rawNum))) {
       setError(
         `${isStart ? 'Starting' : 'Ending'} mileage is required before clocking ${isStart ? 'in' : 'out'}.`,
       )
       return
     }
-    onClose()
+
+    setSubmitting(true)
+    setError('')
+    const token = session?.token
+    if (!token) {
+      setError('Authentication required.')
+      setSubmitting(false)
+      return
+    }
+
+    try {
+      const payload = { odometer: rawNum, fuel, condition, notes }
+      const res = isStart ? await startShiftApi(token, payload) : await endShiftApi(token, payload)
+      if (res.success) {
+        onSuccess?.()
+        onClose()
+      } else {
+        setError(res.error?.message || `Failed to ${isStart ? 'start' : 'end'} shift.`)
+      }
+    } catch {
+      setError(`Failed to ${isStart ? 'start' : 'end'} shift.`)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -157,7 +203,6 @@ export function ShiftForm({
               <LockKeyhole aria-hidden="true" className="size-4 text-muted-foreground" />
             </div>
           </section>
-
 
           <div className="grid gap-5 sm:grid-cols-2">
             <section className="rounded-xl border border-border bg-muted/45 p-4 sm:min-h-60 sm:p-5">
@@ -309,7 +354,7 @@ export function ShiftForm({
                   Ending Odometer - Starting Odometer
                 </p>
               </div>
-              <strong className="ml-auto shrink-0 text-xl">42.6 mi</strong>
+              <strong className="ml-auto shrink-0 text-xl">{estimatedMilesDisplay} mi</strong>
             </section>
           )}
 
@@ -323,22 +368,30 @@ export function ShiftForm({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              disabled={submitting}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
+              disabled={submitting}
               className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2',
+                'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50',
                 isStart
                   ? 'bg-emerald-600 hover:bg-emerald-700 focus-visible:outline-emerald-600'
                   : 'bg-red-600 hover:bg-red-700 focus-visible:outline-red-600',
               )}
             >
-              <CircleGauge className="size-5" />
-              {actionLabel}
-              {isStart && <ChevronRight className="size-5" />}
+              {submitting ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <>
+                  <CircleGauge className="size-5" />
+                  {actionLabel}
+                  {isStart && <ChevronRight className="size-5" />}
+                </>
+              )}
             </button>
           </div>
 

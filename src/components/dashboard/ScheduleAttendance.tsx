@@ -4,13 +4,15 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
-  Info,
+  Pause,
   Play,
   Square,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShiftForm } from "@/components/dashboard/ShiftForm";
+import { getDriverSession } from "@/lib/auth";
+import { getTodayShiftApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const upcoming = [
@@ -19,16 +21,6 @@ const upcoming = [
   ["WED", "30"],
   ["THU", "31"],
   ["FRI", "1"],
-];
-
-const week = [
-  ["Monday", "Jul 21", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-  ["Tuesday", "Jul 22", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-  ["Wednesday", "Jul 23", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-  ["Thursday", "Jul 24", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-  ["Friday", "Jul 25", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-  ["Saturday", "Jul 26", "08:00 AM – 04:00 PM", "8h", "Present", "Approved"],
-  ["Sunday", "Jul 27", "08:00 AM – 04:00 PM", "—", "In Progress", "Pending"],
 ];
 
 function Card({
@@ -52,6 +44,32 @@ function Card({
 
 export function ScheduleAttendance() {
   const [shiftModal, setShiftModal] = useState<"start" | "end" | null>(null);
+  const [shift, setShift] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchShiftStatus = async () => {
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await getTodayShiftApi(token);
+      if (res.success && res.data) {
+        setShift(res.data.shift);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShiftStatus();
+  }, []);
 
   useEffect(() => {
     if (!shiftModal) return;
@@ -67,6 +85,40 @@ export function ScheduleAttendance() {
     };
   }, [shiftModal]);
 
+  const isInProgress = shift?.status === "IN_PROGRESS";
+  const isCompleted = shift?.status === "COMPLETED";
+
+  // Format Started time
+  const startedDisplay = shift?.startedAt
+    ? new Date(shift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "—";
+
+  // Format Ended time
+  const endedDisplay = isCompleted && shift?.endedAt
+    ? new Date(shift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : isInProgress
+      ? "In Progress"
+      : "—";
+
+  // Calculate live or recorded total hours
+  let totalHoursDisplay = "—";
+  if (isCompleted && shift?.totalHoursText) {
+    totalHoursDisplay = shift.totalHoursText;
+  } else if (isInProgress && shift?.startedAt) {
+    const diffMs = new Date().getTime() - new Date(shift.startedAt).getTime();
+    const totalMinutes = Math.max(1, Math.round(diffMs / 60000));
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    totalHoursDisplay = `${hours}h ${mins < 10 ? "0" : ""}${mins}m`;
+  }
+
+  // Today's schedule status badge
+  const scheduleStatusText = isInProgress
+    ? "In Progress"
+    : isCompleted
+      ? "Completed"
+      : "Scheduled";
+
   return (
     <section aria-labelledby="schedule-page-title" className="space-y-5">
       <div className="sr-only">
@@ -81,7 +133,7 @@ export function ScheduleAttendance() {
             ["Scheduled Start", "08:00 AM", "blue"],
             ["Scheduled End", "04:00 PM", "amber"],
             ["Scheduled Hours", "8 hours", "green"],
-            ["Status", "In Progress", "green"],
+            ["Status", scheduleStatusText, "green"],
           ].map(([label, value, tone]) => (
             <div
               key={label}
@@ -104,7 +156,13 @@ export function ScheduleAttendance() {
                 className={cn(
                   "mt-3 text-lg font-bold text-foreground",
                   label === "Status" &&
-                    "inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700",
+                    "inline-block rounded-full px-3 py-1 text-xs font-semibold",
+                  label === "Status" &&
+                    (isInProgress
+                      ? "bg-amber-100 text-amber-700"
+                      : isCompleted
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-blue-100 text-blue-700"),
                 )}
               >
                 {value}
@@ -118,26 +176,63 @@ export function ScheduleAttendance() {
         <Card>
           <h2 className="text-sm font-semibold">Attendance Actions</h2>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => setShiftModal("start")}
-              className="flex min-h-28 flex-col items-center justify-center rounded-xl bg-emerald-100 p-3 text-center text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-200"
-            >
-              <span className="grid size-12 place-items-center rounded-xl bg-emerald-500 text-white">
-                <Play className="size-5 fill-current" />
-              </span>
-              <span className="mt-3">START SHIFT</span>
-            </button>
+            {isInProgress ? (
+              <button
+                type="button"
+                onClick={() => setShiftModal("start")}
+                className="flex min-h-28 flex-col items-center justify-center rounded-xl bg-amber-100 p-3 text-center text-xs font-bold text-amber-700 transition-colors hover:bg-amber-200"
+              >
+                <span className="grid size-12 place-items-center rounded-xl bg-amber-500 text-white">
+                  <Pause className="size-5 fill-current" />
+                </span>
+                <span className="mt-3">IN PROGRESS</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShiftModal("start")}
+                disabled={isCompleted}
+                className={cn(
+                  "flex min-h-28 flex-col items-center justify-center rounded-xl p-3 text-center text-xs font-bold transition-colors",
+                  isCompleted
+                    ? "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
+                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-12 place-items-center rounded-xl text-white",
+                    isCompleted ? "bg-muted-foreground" : "bg-emerald-500",
+                  )}
+                >
+                  <Play className="size-5 fill-current" />
+                </span>
+                <span className="mt-3">{isCompleted ? "SHIFT COMPLETED" : "START SHIFT"}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setShiftModal("end")}
-              className="flex min-h-28 flex-col items-center justify-center rounded-xl bg-red-100 p-3 text-center text-xs font-bold text-red-600 transition-colors hover:bg-red-200"
+              disabled={!isInProgress}
+              className={cn(
+                "flex min-h-28 flex-col items-center justify-center rounded-xl p-3 text-center text-xs font-bold transition-colors",
+                isInProgress
+                  ? "bg-red-100 text-red-600 hover:bg-red-200"
+                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed",
+              )}
             >
-              <span className="grid size-12 place-items-center rounded-xl bg-red-500 text-white">
+              <span
+                className={cn(
+                  "grid size-12 place-items-center rounded-xl text-white",
+                  isInProgress ? "bg-red-500" : "bg-muted-foreground",
+                )}
+              >
                 <Square className="size-4 fill-current" />
               </span>
               <span className="mt-3">END SHIFT</span>
             </button>
+
             <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-border bg-muted p-3 text-center text-xs font-bold text-muted-foreground">
               <span className="grid size-12 place-items-center rounded-xl bg-brand-soft/50">
                 <Clock3 className="size-5" />
@@ -157,9 +252,9 @@ export function ScheduleAttendance() {
           </h2>
           <dl className="mt-4 space-y-3">
             {[
-              ["Started", "08:03 AM"],
-              ["Ended", "04:07 PM"],
-              ["Total Hours", "8h 04m"],
+              ["Started", startedDisplay],
+              ["Ended", endedDisplay],
+              ["Total Hours", totalHoursDisplay],
             ].map(([label, value], index) => (
               <div
                 key={label}
@@ -259,59 +354,56 @@ export function ScheduleAttendance() {
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <h2 className="px-5 py-4 text-sm font-semibold">Weekly Schedule</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[48rem] text-left text-xs">
-            <thead className="bg-muted text-[0.65rem] uppercase text-muted-foreground">
+          <table className="w-full text-left text-xs">
+            <thead className="border-y border-border bg-muted/50 text-muted-foreground">
               <tr>
-                {[
-                  "Day",
-                  "Date",
-                  "Schedule",
-                  "Hours",
-                  "Attendance",
-                  "Status",
-                ].map((head) => (
-                  <th key={head} className="px-4 py-3 font-semibold">
-                    {head}
-                  </th>
-                ))}
+                <th className="px-5 py-3 font-semibold">Day</th>
+                <th className="px-5 py-3 font-semibold">Date</th>
+                <th className="px-5 py-3 font-semibold">Shift Hours</th>
+                <th className="px-5 py-3 font-semibold">Total</th>
+                <th className="px-5 py-3 font-semibold">Attendance</th>
+                <th className="px-5 py-3 font-semibold">Approval</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {week.map((row) => (
-                <tr key={row[0]}>
-                  {row.map((cell, index) => (
-                    <td
-                      key={cell}
+            <tbody className="divide-y divide-border font-medium">
+              {[
+                ["Monday", "Jul 21", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
+                ["Tuesday", "Jul 22", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
+                ["Wednesday", "Jul 23", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
+                ["Thursday", "Jul 24", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
+                ["Friday", "Jul 25", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
+                ["Saturday", "Jul 26", "08:00 AM – 04:00 PM", "8h", "Present", "Approved"],
+                ["Sunday", "Jul 27", "08:00 AM – 04:00 PM", "—", isInProgress ? "In Progress" : "Pending", "Pending"],
+              ].map(([day, date, hours, total, status, approval]) => (
+                <tr key={day} className="hover:bg-muted/40">
+                  <td className="px-5 py-3.5 font-bold text-foreground">{day}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{date}</td>
+                  <td className="px-5 py-3.5 text-foreground">{hours}</td>
+                  <td className="px-5 py-3.5 text-foreground">{total}</td>
+                  <td className="px-5 py-3.5">
+                    <span
                       className={cn(
-                        "px-4 py-3",
-                        index === 0 || index === 3
-                          ? "font-semibold text-foreground"
-                          : "text-muted-foreground",
-                        index === 4 &&
-                          (row[0] === "Sunday"
-                            ? "text-amber-500"
-                            : "text-emerald-600"),
+                        "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                        status === "Present"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-700",
                       )}
                     >
-                      {index === 4 && (
-                        <CheckCircle2 className="mr-1.5 inline size-3.5" />
+                      {status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                        approval === "Approved"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-muted text-muted-foreground",
                       )}
-                      {index === 5 ? (
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1 font-semibold",
-                            cell === "Pending"
-                              ? "bg-amber-100 text-amber-600"
-                              : "bg-emerald-100 text-emerald-700",
-                          )}
-                        >
-                          {cell}
-                        </span>
-                      ) : (
-                        cell
-                      )}
-                    </td>
-                  ))}
+                    >
+                      {approval}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -319,25 +411,13 @@ export function ScheduleAttendance() {
         </div>
       </section>
 
-      <aside className="flex gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-blue-700">
-        <Info className="size-4 shrink-0" />
-        <div>
-          <h2 className="text-xs font-semibold">Shift Reminders</h2>
-          <ul className="mt-2 space-y-1 text-xs leading-5 text-blue-600">
-            <li>
-              Always start your shift before beginning your first trip of the
-              day.
-            </li>
-            <li>End your shift after completing your last assigned trip.</li>
-            <li>
-              Failure to clock out will trigger an automatic logout after 30
-              minutes of inactivity.
-            </li>
-          </ul>
-        </div>
-      </aside>
       {shiftModal && (
-        <ShiftForm mode={shiftModal} onClose={() => setShiftModal(null)} />
+        <ShiftForm
+          mode={shiftModal}
+          startOdometerVal={shift?.startingOdometer}
+          onClose={() => setShiftModal(null)}
+          onSuccess={fetchShiftStatus}
+        />
       )}
     </section>
   );
