@@ -221,7 +221,7 @@ function LocationRow({
   );
 }
 
-function TripCard({ trip, index }: { trip: Trip; index: number }) {
+function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: number; isLastItem?: boolean }) {
   const status = tripStatusStyles[trip.status];
 
   return (
@@ -238,7 +238,7 @@ function TripCard({ trip, index }: { trip: Trip; index: number }) {
       >
         {index + 1}
       </div>
-      {index < trips.length - 1 && (
+      {!isLastItem && (
         <div
           className={cn(
             "absolute bottom-[-0.75rem] left-[1.08rem] top-9 w-px sm:left-[1.22rem] sm:top-10",
@@ -395,37 +395,50 @@ function WorkingHoursPanel() {
   );
 }
 
-function NextPickupPanel() {
+function NextPickupPanel({ nextPickup }: { nextPickup?: Trip | null }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <PanelHeader icon={MapPin} title="Next pickup" />
       <div className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">Robert Chen</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              8900 SW 117th Ave, Miami, FL 33186
-            </p>
+        {nextPickup ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{nextPickup.passenger}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {nextPickup.pickup}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-secondary/16 px-2.5 py-1 text-[0.68rem] font-semibold text-secondary-foreground">
+                {nextPickup.time.split("–")[0]?.trim() || nextPickup.time}
+              </span>
+            </div>
+            <a
+              href={nextPickup.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Open in maps
+              <ExternalLink aria-hidden="true" className="size-3.5" />
+            </a>
+          </>
+        ) : (
+          <div className="py-4 text-center">
+            <p className="text-xs font-semibold text-muted-foreground">No Next Pickup Assigned</p>
           </div>
-          <span className="shrink-0 rounded-full bg-secondary/16 px-2.5 py-1 text-[0.68rem] font-semibold text-secondary-foreground">
-            10:15 AM
-          </span>
-        </div>
-        <a
-          href="https://www.google.com/maps/search/?api=1&query=8900%20SW%20117th%20Ave%20Miami%20FL"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          Open in maps
-          <ExternalLink aria-hidden="true" className="size-3.5" />
-        </a>
+        )}
       </div>
     </section>
   );
 }
 
-function VehiclePanel() {
+function VehiclePanel({ vehicle }: { vehicle?: { make?: string; model?: string; year?: number; color?: string; licensePlate?: string } }) {
+  const vehicleName = vehicle
+    ? [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ")
+    : "Toyota Sienna 2023";
+  const plate = vehicle?.licensePlate || "MIA-4821";
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <PanelHeader icon={CarFront} title="Vehicle information" />
@@ -436,7 +449,7 @@ function VehiclePanel() {
             Vehicle
           </dt>
           <dd className="text-right font-semibold text-foreground">
-            Toyota Sienna 2023
+            {vehicleName}
           </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -444,7 +457,7 @@ function VehiclePanel() {
             <Gauge aria-hidden="true" className="size-3.5" />
             Plate
           </dt>
-          <dd className="font-semibold text-foreground">MIA-4821</dd>
+          <dd className="font-semibold text-foreground">{plate}</dd>
         </div>
         <div className="flex items-center justify-between gap-4">
           <dt className="flex items-center gap-2 text-muted-foreground">
@@ -542,10 +555,14 @@ export function DashboardOverview() {
 
   const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
   const [dispatchNumber, setDispatchNumber] = useState("+18003454825");
+  const [sessionVehicle, setSessionVehicle] = useState<any>(null);
 
   const fetchTrips = () => {
     import("@/lib/auth").then(({ getDriverSession }) => {
       const session = getDriverSession();
+      if (session?.vehicle) {
+        setSessionVehicle(session.vehicle);
+      }
       const token = session?.token;
       if (token) {
         import("@/lib/api").then(({ getDispatchNumberApi }) => {
@@ -556,7 +573,7 @@ export function DashboardOverview() {
           });
         });
         getDriverTripsApi(token).then((res) => {
-          if (res.success && res.data && res.data.trips) {
+          if (res.success && res.data && Array.isArray(res.data.trips)) {
             const mapped = res.data.trips.map((t: any) => {
               let uiStatus: TripStatus = "scheduled";
               if (t.status === "COMPLETED") uiStatus = "completed";
@@ -578,30 +595,32 @@ export function DashboardOverview() {
                 nextActionLabel = "Complete Trip";
               }
 
-              const passengerName = t.passengerId?.name || "Passenger";
-              const initials = passengerName.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+              const passengerName = t.fullName || t.passengerId?.name || "Passenger";
+              const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
 
               return {
                 id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
                 rawId: t._id,
                 status: uiStatus,
-                rideType: "One way",
-                time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Now",
+                rideType: t.tripType || "One way",
+                time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
                 passenger: passengerName,
                 initials,
-                mobility: "Standard",
-                pickup: t.pickupLocation?.address || "Pickup Address",
-                dropoff: t.dropoffLocation?.address || "Dropoff Address",
-                mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || "Miami")}`,
+                mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
+                pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
+                dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
+                mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
                 nextStatus,
                 nextActionLabel,
               };
             });
-            if (mapped.length > 0) {
-              setLiveTrips(mapped);
-            }
+            setLiveTrips(mapped);
+          } else {
+            setLiveTrips([]);
           }
         });
+      } else {
+        setLiveTrips([]);
       }
     });
   };
@@ -622,10 +641,49 @@ export function DashboardOverview() {
     }
   };
 
-  const activeTripList = (liveTrips || trips).map((t: any) => ({
+  const activeTripList: any[] = (liveTrips !== null ? liveTrips : trips).map((t: any) => ({
     ...t,
     onStatusChange: handleStatusChange,
   }));
+
+  const totalTrips = liveTrips ? liveTrips.length : 4;
+  const completedCount = liveTrips ? liveTrips.filter((t) => t.status === "completed").length : 1;
+  const upcomingTrips = liveTrips ? liveTrips.filter((t) => t.status !== "completed") : [];
+  const upcomingCount = liveTrips ? upcomingTrips.length : 2;
+  const nextPickup = upcomingTrips.length > 0 ? upcomingTrips[0] : null;
+
+  const dynamicSummaryItems: SummaryItem[] = liveTrips
+    ? [
+        {
+          label: "Today's trips",
+          value: String(totalTrips),
+          detail: "Daily schedule",
+          icon: CalendarDays,
+          tone: "primary",
+        },
+        {
+          label: "Completed",
+          value: String(completedCount),
+          detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
+          icon: CheckCircle2,
+          tone: "success",
+        },
+        {
+          label: "Upcoming",
+          value: String(upcomingCount),
+          detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
+          icon: Clock3,
+          tone: "secondary",
+        },
+        {
+          label: "Total distance",
+          value: `${(totalTrips * 4.5).toFixed(1)} mi`,
+          detail: `Est. ${totalTrips * 15} min driving`,
+          icon: Route,
+          tone: "primary",
+        },
+      ]
+    : summaryItems;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -634,7 +692,7 @@ export function DashboardOverview() {
       </h1>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {summaryItems.map((item) => (
+        {dynamicSummaryItems.map((item) => (
           <SummaryCard key={item.label} item={item} />
         ))}
       </div>
@@ -656,16 +714,33 @@ export function DashboardOverview() {
           </div>
 
           <div className="space-y-3">
-            {activeTripList.map((trip: any, index: number) => (
-              <TripCard key={trip.id} trip={trip} index={index} />
-            ))}
+            {activeTripList.length === 0 ? (
+              <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[0_6px_20px_rgba(8,37,82,0.05)]">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <CalendarDays className="size-6" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-foreground">No Trips Scheduled Today</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  You currently have no ride assignments scheduled for today. Check back later or contact dispatch.
+                </p>
+              </div>
+            ) : (
+              activeTripList.map((trip: any, index: number) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  index={index}
+                  isLastItem={index === activeTripList.length - 1}
+                />
+              ))
+            )}
           </div>
         </section>
 
         <aside aria-label="Daily information" className="space-y-3">
           <WorkingHoursPanel />
-          <NextPickupPanel />
-          <VehiclePanel />
+          <NextPickupPanel nextPickup={nextPickup} />
+          <VehiclePanel vehicle={sessionVehicle} />
           <EmergencyPanel dispatchNumber={dispatchNumber} />
           <NotificationsPanel />
         </aside>
