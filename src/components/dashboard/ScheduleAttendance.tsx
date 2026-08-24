@@ -142,6 +142,10 @@ export function ScheduleAttendance() {
     { day: "Sunday", date: "Jul 27", shiftHours: "08:00 AM – 04:00 PM", total: "—", attendance: isInProgress ? "In Progress" : "Pending", approval: "Pending" },
   ];
 
+  const todayStartDisplay = (summaryData as any)?.todaySchedule?.startTime || "08:00 AM";
+  const todayEndDisplay = (summaryData as any)?.todaySchedule?.endTime || "04:00 PM";
+  const todayHoursDisplay = (summaryData as any)?.todaySchedule?.hours || "8 hours";
+
   return (
     <section aria-labelledby="schedule-page-title" className="space-y-5">
       <div className="sr-only">
@@ -153,9 +157,9 @@ export function ScheduleAttendance() {
         <h2 className="text-sm font-semibold">Today&apos;s Schedule</h2>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["Scheduled Start", "08:00 AM", "blue"],
-            ["Scheduled End", "04:00 PM", "amber"],
-            ["Scheduled Hours", "8 hours", "green"],
+            ["Scheduled Start", todayStartDisplay, "blue"],
+            ["Scheduled End", todayEndDisplay, "amber"],
+            ["Scheduled Hours", todayHoursDisplay, "green"],
             ["Status", scheduleStatusText, "green"],
           ].map(([label, value, tone]) => (
             <div
