@@ -7,8 +7,11 @@ import {
   getDriverTripByIdApi,
   updateDriverTripStatusApi,
   updateDriverTripNotesApi,
+  getTodayShiftApi,
 } from "@/lib/api";
+import { ShiftAlertModal } from "./ShiftAlertModal";
 import { cn } from "@/lib/utils";
+
 import {
   Accessibility,
   ArrowLeft,
@@ -424,6 +427,9 @@ export function RideDetailsOverview() {
   const [trip, setTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [shiftStatus, setShiftStatus] = useState<string | null>(null);
+  const [showShiftAlert, setShowShiftAlert] = useState(false);
+
   const fetchTrip = async () => {
     if (typeof window === "undefined") return;
     const session = getDriverSession();
@@ -432,6 +438,14 @@ export function RideDetailsOverview() {
       setLoading(false);
       return;
     }
+
+    getTodayShiftApi(token).then((res) => {
+      if (res.success && res.data && res.data.shift) {
+        setShiftStatus(res.data.shift.status);
+      } else {
+        setShiftStatus(null);
+      }
+    });
 
     const queryId = new URLSearchParams(window.location.search).get("id");
 
@@ -462,14 +476,21 @@ export function RideDetailsOverview() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!trip) return;
+    if (shiftStatus !== "IN_PROGRESS") {
+      setShowShiftAlert(true);
+      return;
+    }
     const session = getDriverSession();
     const token = session?.token;
     if (!token) return;
     const res = await updateDriverTripStatusApi(token, trip._id, newStatus);
     if (res.success) {
       fetchTrip();
+    } else if (res.error?.code === "SHIFT_NOT_STARTED") {
+      setShowShiftAlert(true);
     }
   };
+
 
   const handleSaveNotes = async (newNotes: string) => {
     if (!trip) return;
@@ -785,6 +806,12 @@ export function RideDetailsOverview() {
           onSave={handleSaveNotes}
         />
       </div>
+
+      <ShiftAlertModal
+        isOpen={showShiftAlert}
+        onClose={() => setShowShiftAlert(false)}
+      />
     </section>
   );
 }
+

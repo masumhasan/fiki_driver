@@ -22,7 +22,10 @@ import {
   Timer,
 } from "lucide-react";
 import Link from "next/link";
+import { ShiftAlertModal } from "./ShiftAlertModal";
 import { cn } from "@/lib/utils";
+
+
 
 type SummaryTone = "primary" | "secondary" | "success";
 type TripStatus = "inProgress" | "scheduled" | "completed";
@@ -557,6 +560,8 @@ export function DashboardOverview() {
   const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
   const [dispatchNumber, setDispatchNumber] = useState("+18003454825");
   const [sessionVehicle, setSessionVehicle] = useState<any>(null);
+  const [shiftStatus, setShiftStatus] = useState<string | null>(null);
+  const [showShiftAlert, setShowShiftAlert] = useState(false);
 
   const fetchTrips = () => {
     import("@/lib/auth").then(({ getDriverSession }) => {
@@ -566,59 +571,66 @@ export function DashboardOverview() {
       }
       const token = session?.token;
       if (token) {
-        import("@/lib/api").then(({ getDispatchNumberApi }) => {
+        import("@/lib/api").then(({ getDispatchNumberApi, getTodayShiftApi, getDriverTripsApi }) => {
           getDispatchNumberApi(token).then((res) => {
             if (res.success && res.data) {
               setDispatchNumber(res.data.dispatchNumber);
             }
           });
-        });
-        getDriverTripsApi(token).then((res) => {
-          if (res.success && res.data && Array.isArray(res.data.trips)) {
-            const mapped = res.data.trips.map((t: any) => {
-              let uiStatus: TripStatus = "scheduled";
-              if (t.status === "COMPLETED") uiStatus = "completed";
-              else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+          getTodayShiftApi(token).then((res) => {
+            if (res.success && res.data && res.data.shift) {
+              setShiftStatus(res.data.shift.status);
+            } else {
+              setShiftStatus(null);
+            }
+          });
+          getDriverTripsApi(token).then((res) => {
+            if (res.success && res.data && Array.isArray(res.data.trips)) {
+              const mapped = res.data.trips.map((t: any) => {
+                let uiStatus: TripStatus = "scheduled";
+                if (t.status === "COMPLETED") uiStatus = "completed";
+                else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
 
-              let nextStatus = "";
-              let nextActionLabel = "";
-              if (t.status === "ACCEPTED") {
-                nextStatus = "DRIVER_ARRIVING";
-                nextActionLabel = "Mark Arriving";
-              } else if (t.status === "DRIVER_ARRIVING") {
-                nextStatus = "DRIVER_ARRIVED";
-                nextActionLabel = "Mark Arrived";
-              } else if (t.status === "DRIVER_ARRIVED") {
-                nextStatus = "IN_PROGRESS";
-                nextActionLabel = "Start Trip";
-              } else if (t.status === "IN_PROGRESS") {
-                nextStatus = "COMPLETED";
-                nextActionLabel = "Complete Trip";
-              }
+                let nextStatus = "";
+                let nextActionLabel = "";
+                if (t.status === "ACCEPTED") {
+                  nextStatus = "DRIVER_ARRIVING";
+                  nextActionLabel = "Mark Arriving";
+                } else if (t.status === "DRIVER_ARRIVING") {
+                  nextStatus = "DRIVER_ARRIVED";
+                  nextActionLabel = "Mark Arrived";
+                } else if (t.status === "DRIVER_ARRIVED") {
+                  nextStatus = "IN_PROGRESS";
+                  nextActionLabel = "Start Trip";
+                } else if (t.status === "IN_PROGRESS") {
+                  nextStatus = "COMPLETED";
+                  nextActionLabel = "Complete Trip";
+                }
 
-              const passengerName = t.fullName || t.passengerId?.name || "Passenger";
-              const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+                const passengerName = t.fullName || t.passengerId?.name || "Passenger";
+                const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
 
-              return {
-                id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
-                rawId: t._id,
-                status: uiStatus,
-                rideType: t.tripType || "One way",
-                time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
-                passenger: passengerName,
-                initials,
-                mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
-                pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
-                dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
-                mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
-                nextStatus,
-                nextActionLabel,
-              };
-            });
-            setLiveTrips(mapped);
-          } else {
-            setLiveTrips([]);
-          }
+                return {
+                  id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
+                  rawId: t._id,
+                  status: uiStatus,
+                  rideType: t.tripType || "One way",
+                  time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
+                  passenger: passengerName,
+                  initials,
+                  mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
+                  pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
+                  dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
+                  mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
+                  nextStatus,
+                  nextActionLabel,
+                };
+              });
+              setLiveTrips(mapped);
+            } else {
+              setLiveTrips([]);
+            }
+          });
         });
       } else {
         setLiveTrips([]);
@@ -631,6 +643,10 @@ export function DashboardOverview() {
   }, []);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
+    if (shiftStatus !== "IN_PROGRESS") {
+      setShowShiftAlert(true);
+      return;
+    }
     const { getDriverSession } = await import("@/lib/auth");
     const session = getDriverSession();
     const token = session?.token;
@@ -638,9 +654,12 @@ export function DashboardOverview() {
       const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
       if (res.success) {
         fetchTrips();
+      } else if (res.error?.code === "SHIFT_NOT_STARTED") {
+        setShowShiftAlert(true);
       }
     }
   };
+
 
   const activeTripList: any[] = (liveTrips !== null ? liveTrips : trips).map((t: any) => ({
     ...t,
@@ -746,6 +765,12 @@ export function DashboardOverview() {
           <NotificationsPanel />
         </aside>
       </div>
+
+      <ShiftAlertModal
+        isOpen={showShiftAlert}
+        onClose={() => setShowShiftAlert(false)}
+      />
     </section>
   );
 }
+
