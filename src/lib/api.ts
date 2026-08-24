@@ -156,6 +156,17 @@ export async function getTodayShiftApi(token: string) {
   }
 }
 
+export async function getScheduleSummaryApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/schedule-summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch schedule summary" } };
+  }
+}
+
 export async function startShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string }) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/start`, {

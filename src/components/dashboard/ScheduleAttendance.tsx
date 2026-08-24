@@ -12,16 +12,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShiftForm } from "@/components/dashboard/ShiftForm";
 import { getDriverSession } from "@/lib/auth";
-import { getTodayShiftApi } from "@/lib/api";
+import { getScheduleSummaryApi, getTodayShiftApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-const upcoming = [
-  ["MON", "28"],
-  ["TUE", "29"],
-  ["WED", "30"],
-  ["THU", "31"],
-  ["FRI", "1"],
-];
 
 function Card({
   children,
@@ -45,6 +37,11 @@ function Card({
 export function ScheduleAttendance() {
   const [shiftModal, setShiftModal] = useState<"start" | "end" | null>(null);
   const [shift, setShift] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState<{
+    tripSummary: { totalTrips: number; completed: number; inProgress: number; remaining: number };
+    upcomingSchedule: Array<{ day: string; date: string; hours: string; status: string }>;
+    weeklySchedule: Array<{ day: string; date: string; shiftHours: string; total: string; attendance: string; approval: string }>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchShiftStatus = async () => {
@@ -56,9 +53,10 @@ export function ScheduleAttendance() {
     }
 
     try {
-      const res = await getTodayShiftApi(token);
+      const res = await getScheduleSummaryApi(token);
       if (res.success && res.data) {
-        setShift(res.data.shift);
+        setShift(res.data.todayShift);
+        setSummaryData(res.data);
       }
     } catch {
       // fallback
@@ -118,6 +116,31 @@ export function ScheduleAttendance() {
     : isCompleted
       ? "Completed"
       : "Scheduled";
+
+  const upcomingList = summaryData?.upcomingSchedule || [
+    { day: "MON", date: "28", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
+    { day: "TUE", date: "29", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
+    { day: "WED", date: "30", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
+    { day: "THU", date: "31", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
+    { day: "FRI", date: "1", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
+  ];
+
+  const tripSummaryItems = [
+    [String(summaryData?.tripSummary?.totalTrips ?? 0), "Total Trips", "blue"],
+    [String(summaryData?.tripSummary?.completed ?? 0), "Completed", "green"],
+    [String(summaryData?.tripSummary?.inProgress ?? 0), "In Progress", "amber"],
+    [String(summaryData?.tripSummary?.remaining ?? 0), "Remaining", "violet"],
+  ];
+
+  const weeklyList = summaryData?.weeklySchedule || [
+    { day: "Monday", date: "Jul 21", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Tuesday", date: "Jul 22", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Wednesday", date: "Jul 23", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Thursday", date: "Jul 24", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Friday", date: "Jul 25", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Saturday", date: "Jul 26", shiftHours: "08:00 AM – 04:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
+    { day: "Sunday", date: "Jul 27", shiftHours: "08:00 AM – 04:00 PM", total: "—", attendance: isInProgress ? "In Progress" : "Pending", approval: "Pending" },
+  ];
 
   return (
     <section aria-labelledby="schedule-page-title" className="space-y-5">
@@ -291,22 +314,22 @@ export function ScheduleAttendance() {
         <Card>
           <h2 className="text-sm font-semibold">Upcoming Schedule</h2>
           <div className="mt-4 space-y-2">
-            {upcoming.map(([day, date]) => (
+            {upcomingList.map((item, idx) => (
               <div
-                key={day}
+                key={item.day + idx}
                 className="flex items-center rounded-xl border border-border bg-muted/60 px-4 py-3"
               >
                 <span className="w-12 border-r border-border text-center">
                   <small className="block text-[0.6rem] font-bold text-muted-foreground">
-                    {day}
+                    {item.day}
                   </small>
-                  <strong className="text-sm">{date}</strong>
+                  <strong className="text-sm">{item.date}</strong>
                 </span>
                 <span className="ml-4 text-xs text-muted-foreground">
-                  07:00 AM – 03:00 PM
+                  {item.hours}
                 </span>
                 <span className="ml-auto rounded-full bg-blue-100 px-3 py-1 text-[0.68rem] font-semibold text-blue-600">
-                  Scheduled
+                  {item.status}
                 </span>
               </div>
             ))}
@@ -316,12 +339,7 @@ export function ScheduleAttendance() {
         <Card>
           <h2 className="text-sm font-semibold">Today&apos;s Trip Summary</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            {[
-              ["6", "Total Trips", "blue"],
-              ["4", "Completed", "green"],
-              ["1", "In Progress", "amber"],
-              ["1", "Remaining", "violet"],
-            ].map(([value, label, tone]) => (
+            {tripSummaryItems.map(([value, label, tone]) => (
               <div
                 key={label}
                 className={cn(
@@ -366,42 +384,38 @@ export function ScheduleAttendance() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-medium">
-              {[
-                ["Monday", "Jul 21", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-                ["Tuesday", "Jul 22", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-                ["Wednesday", "Jul 23", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-                ["Thursday", "Jul 24", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-                ["Friday", "Jul 25", "07:00 AM – 03:00 PM", "8h", "Present", "Approved"],
-                ["Saturday", "Jul 26", "08:00 AM – 04:00 PM", "8h", "Present", "Approved"],
-                ["Sunday", "Jul 27", "08:00 AM – 04:00 PM", "—", isInProgress ? "In Progress" : "Pending", "Pending"],
-              ].map(([day, date, hours, total, status, approval]) => (
-                <tr key={day} className="hover:bg-muted/40">
-                  <td className="px-5 py-3.5 font-bold text-foreground">{day}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{date}</td>
-                  <td className="px-5 py-3.5 text-foreground">{hours}</td>
-                  <td className="px-5 py-3.5 text-foreground">{total}</td>
+              {weeklyList.map((row, idx) => (
+                <tr key={row.day + idx} className="hover:bg-muted/40">
+                  <td className="px-5 py-3.5 font-bold text-foreground">{row.day}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{row.date}</td>
+                  <td className="px-5 py-3.5 text-foreground">{row.shiftHours}</td>
+                  <td className="px-5 py-3.5 text-foreground">{row.total}</td>
                   <td className="px-5 py-3.5">
                     <span
                       className={cn(
                         "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
-                        status === "Present"
+                        row.attendance === "Present"
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-700",
+                          : row.attendance === "In Progress"
+                            ? "bg-amber-100 text-amber-700"
+                            : row.attendance === "Off"
+                              ? "bg-slate-100 text-slate-600"
+                              : "bg-blue-100 text-blue-700",
                       )}
                     >
-                      {status}
+                      {row.attendance}
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
                     <span
                       className={cn(
                         "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
-                        approval === "Approved"
+                        row.approval === "Approved"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {approval}
+                      {row.approval}
                     </span>
                   </td>
                 </tr>
