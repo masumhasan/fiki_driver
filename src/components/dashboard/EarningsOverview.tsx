@@ -89,7 +89,28 @@ const rides = [
 ];
 
 export function EarningsOverview() {
-  const [liveEarnings, setLiveEarnings] = useState<{ totalEarnings: number; totalRides: number } | null>(null);
+  const [liveEarnings, setLiveEarnings] = useState<{
+    hourlyRate: number;
+    approvedHours: number;
+    completedTripsCount: number;
+    tripBonusPerRide: number;
+    tripBonus: number;
+    regularWages: number;
+    grossEarnings: number;
+    payrollStatus: string;
+    payPeriodRange: string;
+    expectedPayDate: string;
+    rideHistory: Array<{
+      date: string;
+      tripId: string;
+      passenger: string;
+      type: string;
+      pickup: string;
+      destination: string;
+      status: string;
+      bonus: string;
+    }>;
+  } | null>(null);
 
   useEffect(() => {
     import("@/lib/auth").then(({ getDriverSession }) => {
@@ -98,19 +119,43 @@ export function EarningsOverview() {
       if (token) {
         getDriverEarningsApi(token).then((res) => {
           if (res.success && res.data) {
-            setLiveEarnings({
-              totalEarnings: res.data.totalEarnings,
-              totalRides: res.data.totalRides,
-            });
+            setLiveEarnings(res.data);
           }
         });
       }
     });
   }, []);
 
-  const totalEarningsDisplay = liveEarnings
-    ? `$${liveEarnings.totalEarnings.toFixed(2)}`
-    : "$1,240.00";
+  const hourlyRate = liveEarnings?.hourlyRate ?? 14;
+  const approvedHours = liveEarnings?.approvedHours ?? 80;
+  const completedTripsCount = liveEarnings?.completedTripsCount ?? 40;
+  const tripBonus = liveEarnings?.tripBonus ?? (completedTripsCount * 3);
+  const regularWages = liveEarnings?.regularWages ?? (hourlyRate * approvedHours);
+  const grossEarnings = liveEarnings?.grossEarnings ?? (regularWages + tripBonus);
+
+  const payPeriodRange = liveEarnings?.payPeriodRange || "Jul 14 – Jul 27, 2026";
+  const expectedPayDate = liveEarnings?.expectedPayDate || "Jul 31, 2026";
+
+  const summary = [
+    [`$${hourlyRate}/hr`, "Hourly Rate", CircleDollarSign],
+    [`${approvedHours} hrs`, "Approved Hours", Clock3],
+    [`${completedTripsCount}`, "Completed Trips", Route],
+    [`${completedTripsCount} × $3`, "Trip Bonus", TrendingUp],
+    [`$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Total Salary", WalletCards],
+  ] as const;
+
+  const rideList = liveEarnings?.rideHistory?.length
+    ? liveEarnings.rideHistory.map((r) => [
+        r.date,
+        r.tripId,
+        r.passenger,
+        r.type,
+        r.pickup,
+        r.destination,
+        r.status,
+        r.bonus,
+      ])
+    : rides;
 
   return (
     <section aria-labelledby="earnings-title" className="space-y-5">
@@ -119,8 +164,7 @@ export function EarningsOverview() {
           type="button"
           className="flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-xs font-semibold shadow-sm"
         >
-          <CalendarDays className="size-4 text-muted-foreground" /> Jul 14 – Jul
-          27, 2026
+          <CalendarDays className="size-4 text-muted-foreground" /> {payPeriodRange}
         </button>
       </div>
 
@@ -135,13 +179,13 @@ export function EarningsOverview() {
               id="earnings-title"
               className="mt-2 text-4xl font-bold tracking-[-0.04em] text-secondary sm:text-5xl"
             >
-              {totalEarningsDisplay}
+              ${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h1>
             <p className="mt-2 text-xs text-white/50">Current Pay Period</p>
-            <p className="mt-1 text-sm font-semibold">Jul 14 – Jul 27, 2026</p>
+            <p className="mt-1 text-sm font-semibold">{payPeriodRange}</p>
             <p className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white/8 px-4 py-3 text-xs text-white/65 ring-1 ring-white/10">
               <span className="size-2 rounded-full bg-emerald-400" /> Expected
-              Pay Date: <strong className="text-white">Jul 31, 2026</strong>
+              Pay Date: <strong className="text-white">{expectedPayDate}</strong>
             </p>
           </div>
           <div className="border-t border-white/10 p-6 sm:p-8 md:border-l md:border-t-0">
@@ -152,7 +196,7 @@ export function EarningsOverview() {
               <span className="grid size-6 place-items-center rounded-full bg-emerald-400 text-[#112f5f]">
                 <Check className="size-4" />
               </span>
-              <span className="text-sm font-semibold">Approved</span>
+              <span className="text-sm font-semibold">{liveEarnings?.payrollStatus || "Approved"}</span>
             </div>
             {["Entered into Payroll", "Waiting Deposit", "Paid"].map(
               (label) => (
@@ -188,9 +232,9 @@ export function EarningsOverview() {
         <h2 className="text-sm font-semibold">Earnings Breakdown</h2>
         <dl className="mt-5 divide-y divide-border">
           {[
-            ["Regular Wages", "80 hrs × $14/hr", "$1,120.00"],
-            ["Trip Bonus", "40 trips × $3.00", "$120.00"],
-            ["Gross Earnings", "Current pay period total", "$1,240.00"],
+            ["Regular Wages", `${approvedHours} hrs × $${hourlyRate}/hr`, `$${regularWages.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            ["Trip Bonus", `${completedTripsCount} trips × $3.00`, `$${tripBonus.toFixed(2)}`],
+            ["Gross Earnings", "Current pay period total", `$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
           ].map(([label, detail, amount], index) => (
             <div key={label} className="flex justify-between gap-4 py-4">
               <div>
@@ -215,7 +259,7 @@ export function EarningsOverview() {
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 className="text-sm font-semibold">Ride History</h2>
           <span className="text-xs text-muted-foreground">
-            Pay Period Jul 14 – Jul 27 · 20 rides
+            Pay Period {payPeriodRange} · {rideList.length} rides
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -239,11 +283,11 @@ export function EarningsOverview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rides.map((ride) => (
-                <tr key={ride[1]}>
-                  {ride.map((cell, index) => (
+              {rideList.map((ride, rIdx) => (
+                <tr key={ride[1] + rIdx}>
+                  {ride.slice(0, 6).map((cell, index) => (
                     <td
-                      key={cell}
+                      key={index}
                       className={`px-4 py-3 ${index === 1 ? "font-semibold text-blue-600" : index === 0 || index > 2 ? "text-muted-foreground" : ""}`}
                     >
                       {cell}
@@ -251,10 +295,10 @@ export function EarningsOverview() {
                   ))}
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
-                      Completed
+                      {ride[6] || "Completed"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-bold">$3</td>
+                  <td className="px-4 py-3 font-bold text-emerald-600">{ride[7] || "+$3.00"}</td>
                 </tr>
               ))}
             </tbody>
