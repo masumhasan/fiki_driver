@@ -43,6 +43,15 @@ export function ScheduleAttendance() {
     weeklySchedule: Array<{ day: string; date: string; shiftHours: string; total: string; attendance: string; approval: string }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchShiftStatus = async () => {
     const session = getDriverSession();
@@ -201,7 +210,34 @@ export function ScheduleAttendance() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <Card>
-          <h2 className="text-sm font-semibold">Attendance Actions</h2>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-sm font-semibold">Attendance Actions</h2>
+            {currentTime && (
+              <div className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground shadow-2xs">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                </span>
+                <span>
+                  {currentTime.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="text-muted-foreground/40">•</span>
+                <span className="font-mono font-bold text-foreground">
+                  {currentTime.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
             {isInProgress ? (
               <button
