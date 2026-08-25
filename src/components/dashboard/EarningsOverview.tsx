@@ -94,6 +94,7 @@ export function EarningsOverview() {
     approvedHours: number;
     completedTripsCount: number;
     tripBonusPerRide: number;
+    tripBonusRate?: number;
     tripBonus: number;
     regularWages: number;
     grossEarnings: number;
@@ -129,7 +130,8 @@ export function EarningsOverview() {
   const hourlyRate = liveEarnings?.hourlyRate ?? 14;
   const approvedHours = liveEarnings?.approvedHours ?? 80;
   const completedTripsCount = liveEarnings?.completedTripsCount ?? 40;
-  const tripBonus = liveEarnings?.tripBonus ?? (completedTripsCount * 3);
+  const tripBonusRate = liveEarnings?.tripBonusRate ?? liveEarnings?.tripBonusPerRide ?? 3;
+  const tripBonus = liveEarnings?.tripBonus ?? (completedTripsCount * tripBonusRate);
   const regularWages = liveEarnings?.regularWages ?? (hourlyRate * approvedHours);
   const grossEarnings = liveEarnings?.grossEarnings ?? (regularWages + tripBonus);
 
@@ -140,7 +142,7 @@ export function EarningsOverview() {
     [`$${hourlyRate}/hr`, "Hourly Rate", CircleDollarSign],
     [`${approvedHours} hrs`, "Approved Hours", Clock3],
     [`${completedTripsCount}`, "Completed Trips", Route],
-    [`${completedTripsCount} × $3`, "Trip Bonus", TrendingUp],
+    [`${completedTripsCount} × $${tripBonusRate}`, "Trip Bonus", TrendingUp],
     [`$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Total Salary", WalletCards],
   ] as const;
 
@@ -233,7 +235,7 @@ export function EarningsOverview() {
         <dl className="mt-5 divide-y divide-border">
           {[
             ["Regular Wages", `${approvedHours} hrs × $${hourlyRate}/hr`, `$${regularWages.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-            ["Trip Bonus", `${completedTripsCount} trips × $3.00`, `$${tripBonus.toFixed(2)}`],
+            ["Trip Bonus", `${completedTripsCount} trips × $${tripBonusRate.toFixed(2)}`, `$${tripBonus.toFixed(2)}`],
             ["Gross Earnings", "Current pay period total", `$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
           ].map(([label, detail, amount], index) => (
             <div key={label} className="flex justify-between gap-4 py-4">
