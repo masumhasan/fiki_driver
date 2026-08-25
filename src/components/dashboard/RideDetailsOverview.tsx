@@ -757,7 +757,7 @@ export function RideDetailsOverview() {
           address={pickupAddress}
           city="Miami"
           zip="33125"
-          instructions={trip.specialInstructions || trip.accessInformation || "Call upon arrival. Use the main entrance on the west side."}
+          instructions={trip.driverNotes || trip.specialInstructions || trip.accessInformation || "Call upon arrival. Use the main entrance on the west side."}
           contactLabel="Pickup contact"
           contact={`Front Desk · ${passengerPhone}`}
           actionText={pickupActionText}
@@ -783,13 +783,13 @@ export function RideDetailsOverview() {
           <div className="p-4 sm:p-5">
             <DetailGrid details={passengerDetails} columns="two" />
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-destructive/18 bg-destructive/4 p-3">
-                <div className="flex items-center gap-2 text-destructive">
-                  <HeartPulse aria-hidden="true" className="size-3.5" />
-                  <p className="text-[0.68rem] font-semibold">Medical note</p>
+              <div className="rounded-xl border border-primary/12 bg-primary/4 p-3">
+                <div className="flex items-center gap-2 text-primary">
+                  <Accessibility aria-hidden="true" className="size-3.5" />
+                  <p className="text-[0.68rem] font-semibold">Mobility type</p>
                 </div>
-                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  {trip.specialInstructions || trip.accessInformation || "Passenger requires standard transit assistance."}
+                <p className="mt-1.5 text-xs font-bold leading-5 text-foreground capitalize">
+                  {mobilityType}
                 </p>
               </div>
               <div className="rounded-xl border border-primary/12 bg-primary/4 p-3">
@@ -835,7 +835,7 @@ export function RideDetailsOverview() {
 
       <div className="mt-4">
         <DriverNotes
-          initialNotes={trip.driverNotes || ""}
+          initialNotes={trip.driverShiftNotes || ""}
           onSave={handleSaveNotes}
         />
       </div>
