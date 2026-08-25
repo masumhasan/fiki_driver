@@ -96,26 +96,24 @@ function DetailGrid({
 
 function LocationCard({
   address,
-  city,
   contact,
   contactLabel,
   instructions,
   title,
   type,
-  zip,
   onAction,
   actionText,
   actionDisabled,
 }: {
   address: string;
-  city: string;
+  city?: string;
   contact: string;
   contactLabel: string;
   facility?: string;
   instructions?: string;
   title: string;
   type: "pickup" | "dropoff";
-  zip: string;
+  zip?: string;
   onAction?: () => void;
   actionText?: string;
   actionDisabled?: boolean;
@@ -148,9 +146,6 @@ function LocationCard({
             Address
           </p>
           <p className="mt-1 text-xs leading-5 text-foreground">{address}</p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {city} {zip}
-          </p>
         </div>
 
         {instructions && (
@@ -744,8 +739,6 @@ export function RideDetailsOverview() {
           type="pickup"
           title="Pickup information"
           address={pickupAddress}
-          city="Miami"
-          zip="33125"
           instructions={trip.driverNotes || trip.specialInstructions || trip.accessInformation || "Call upon arrival. Use the main entrance on the west side."}
           contactLabel="Pickup contact"
           contact={`Front Desk · ${passengerPhone}`}
@@ -756,8 +749,6 @@ export function RideDetailsOverview() {
           type="dropoff"
           title="Drop-off information"
           address={dropoffAddress}
-          city="Miami"
-          zip="33136"
           contactLabel="Destination contact"
           contact={trip.emergencyContactPhone ? `${trip.emergencyContactName || "Admissions"} · ${trip.emergencyContactPhone}` : "Admissions · (305) 555-0140"}
           actionText={dropoffActionText}
