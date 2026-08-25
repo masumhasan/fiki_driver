@@ -99,7 +99,6 @@ function LocationCard({
   city,
   contact,
   contactLabel,
-  facility,
   instructions,
   title,
   type,
@@ -112,7 +111,7 @@ function LocationCard({
   city: string;
   contact: string;
   contactLabel: string;
-  facility: string;
+  facility?: string;
   instructions?: string;
   title: string;
   type: "pickup" | "dropoff";
@@ -145,15 +144,6 @@ function LocationCard({
 
       <div className="p-4 sm:p-5">
         <div>
-          <p className="text-[0.68rem] font-medium text-muted-foreground">
-            Facility
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {facility}
-          </p>
-        </div>
-
-        <div className="mt-4">
           <p className="text-[0.68rem] font-medium text-muted-foreground">
             Address
           </p>
@@ -753,7 +743,6 @@ export function RideDetailsOverview() {
         <LocationCard
           type="pickup"
           title="Pickup information"
-          facility={trip.pickupFacility || "Sunrise Senior Living"}
           address={pickupAddress}
           city="Miami"
           zip="33125"
@@ -766,7 +755,6 @@ export function RideDetailsOverview() {
         <LocationCard
           type="dropoff"
           title="Drop-off information"
-          facility={trip.dropoffFacility || "Jackson Memorial Hospital"}
           address={dropoffAddress}
           city="Miami"
           zip="33136"
