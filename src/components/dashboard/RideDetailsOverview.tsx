@@ -197,67 +197,92 @@ function LocationCard({
   );
 }
 
+function formatStepTime(dateVal?: string | Date): string | null {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
 function TripStatusPanel({
   status,
+  trip,
   onNextStatus,
   nextActionText,
 }: {
   status: string;
+  trip?: any;
   onNextStatus?: () => void;
   nextActionText?: string;
 }) {
-  const getStepStates = (currentStatus: string) => {
+  const getStepStates = (currentStatus: string, tripObj: any) => {
+    const createdTime = formatStepTime(tripObj?.createdAt) || "9:40 AM";
+    const assignedTime = formatStepTime(tripObj?.assignedAt || tripObj?.createdAt) || createdTime;
+    const acceptedTime = formatStepTime(tripObj?.acceptedAt || tripObj?.assignedAt || tripObj?.createdAt) || assignedTime;
+    const arrivingTime = formatStepTime(tripObj?.arrivingAt);
+    const arrivedTime = formatStepTime(tripObj?.arrivedAt);
+    const inProgressTime = formatStepTime(tripObj?.inProgressAt || tripObj?.startedAt);
+    const completedTime = formatStepTime(tripObj?.completedAt);
+
     switch (currentStatus) {
       case "ACCEPTED":
         return [
-          { label: "Assigned", state: "complete" },
-          { label: "Accepted", state: "complete" },
-          { label: "Heading to pickup", state: "current" },
-          { label: "Passenger picked up", state: "upcoming" },
-          { label: "Heading to destination", state: "upcoming" },
-          { label: "Trip completed", state: "upcoming" },
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "current", time: arrivingTime || acceptedTime },
+          { label: "Passenger picked up", state: "upcoming", time: null },
+          { label: "Heading to destination", state: "upcoming", time: null },
+          { label: "Trip completed", state: "upcoming", time: null },
         ];
       case "DRIVER_ARRIVING":
+        return [
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
+          { label: "Passenger picked up", state: "current", time: arrivedTime || arrivingTime },
+          { label: "Heading to destination", state: "upcoming", time: null },
+          { label: "Trip completed", state: "upcoming", time: null },
+        ];
       case "DRIVER_ARRIVED":
         return [
-          { label: "Assigned", state: "complete" },
-          { label: "Accepted", state: "complete" },
-          { label: "Heading to pickup", state: "complete" },
-          { label: "Passenger picked up", state: "current" },
-          { label: "Heading to destination", state: "upcoming" },
-          { label: "Trip completed", state: "upcoming" },
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
+          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
+          { label: "Heading to destination", state: "current", time: inProgressTime || arrivedTime },
+          { label: "Trip completed", state: "upcoming", time: null },
         ];
       case "IN_PROGRESS":
         return [
-          { label: "Assigned", state: "complete" },
-          { label: "Accepted", state: "complete" },
-          { label: "Heading to pickup", state: "complete" },
-          { label: "Passenger picked up", state: "complete" },
-          { label: "Heading to destination", state: "current" },
-          { label: "Trip completed", state: "upcoming" },
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
+          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
+          { label: "Heading to destination", state: "complete", time: inProgressTime || arrivedTime },
+          { label: "Trip completed", state: "current", time: completedTime || inProgressTime },
         ];
       case "COMPLETED":
         return [
-          { label: "Assigned", state: "complete" },
-          { label: "Accepted", state: "complete" },
-          { label: "Heading to pickup", state: "complete" },
-          { label: "Passenger picked up", state: "complete" },
-          { label: "Heading to destination", state: "complete" },
-          { label: "Trip completed", state: "complete" },
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
+          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
+          { label: "Heading to destination", state: "complete", time: inProgressTime || arrivedTime },
+          { label: "Trip completed", state: "complete", time: completedTime || inProgressTime },
         ];
       default:
         return [
-          { label: "Assigned", state: "complete" },
-          { label: "Accepted", state: "complete" },
-          { label: "Heading to pickup", state: "upcoming" },
-          { label: "Passenger picked up", state: "upcoming" },
-          { label: "Heading to destination", state: "upcoming" },
-          { label: "Trip completed", state: "upcoming" },
+          { label: "Assigned", state: "complete", time: assignedTime },
+          { label: "Accepted", state: "complete", time: acceptedTime },
+          { label: "Heading to pickup", state: "upcoming", time: null },
+          { label: "Passenger picked up", state: "upcoming", time: null },
+          { label: "Heading to destination", state: "upcoming", time: null },
+          { label: "Trip completed", state: "upcoming", time: null },
         ];
     }
   };
 
-  const steps = getStepStates(status);
+  const steps = getStepStates(status, trip);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -308,16 +333,23 @@ function TripStatusPanel({
                 </div>
 
                 <div className={cn("pb-4 pt-0.5", isLast && "pb-0")}>
-                  <p
-                    className={cn(
-                      "text-xs font-medium",
-                      step.state === "upcoming"
-                        ? "text-muted-foreground"
-                        : "text-foreground",
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={cn(
+                        "text-xs font-semibold",
+                        step.state === "upcoming"
+                          ? "text-muted-foreground"
+                          : "text-foreground",
+                      )}
+                    >
+                      {step.label}
+                    </p>
+                    {step.time && (
+                      <span className="text-[11px] font-bold text-primary">
+                        {step.time}
+                      </span>
                     )}
-                  >
-                    {step.label}
-                  </p>
+                  </div>
                   {isCurrent && (
                     <p className="mt-1 text-[0.68rem] font-medium text-brand-yellow-hover">
                       Current status
@@ -795,6 +827,7 @@ export function RideDetailsOverview() {
       <div className="mt-4">
         <TripStatusPanel
           status={trip.status}
+          trip={trip}
           onNextStatus={() => nextStatusVal && handleStatusChange(nextStatusVal)}
           nextActionText={nextStatusText}
         />
