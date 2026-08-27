@@ -120,12 +120,17 @@ export async function updateDriverTripNotesApi(token: string, tripId: string, dr
   }
 }
 
-export async function updateDriverTripStatusApi(token: string, tripId: string, status: string) {
+export async function updateDriverTripStatusApi(
+  token: string,
+  tripId: string,
+  status: string,
+  extraData?: { receiverSignature?: string; receiverName?: string; receiverRelationship?: string }
+) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...extraData }),
     });
     return await res.json();
   } catch {

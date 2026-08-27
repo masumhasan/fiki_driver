@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getDriverSession } from "@/lib/auth";
 import {
   getDriverTripsApi,
@@ -20,6 +20,7 @@ import {
   Check,
   ClipboardList,
   ExternalLink,
+  FileCheck2,
   FileText,
   HeartPulse,
   type LucideIcon,
@@ -32,6 +33,7 @@ import {
   ShieldAlert,
   UserRound,
   Loader2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -440,12 +442,212 @@ function DriverNotes({
   );
 }
 
+function SignaturePad({ value, onChange }: { value?: string; onChange?: (val: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+  }, []);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.beginPath();
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    onChange?.(canvas.toDataURL());
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange?.("");
+  };
+
+  return (
+    <div className="relative w-full h-36 border border-border rounded-xl bg-slate-50 overflow-hidden touch-none">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full cursor-crosshair"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        onTouchStart={startDrawing}
+        onTouchMove={draw}
+        onTouchEnd={stopDrawing}
+      />
+      <button
+        type="button"
+        onClick={clear}
+        className="absolute top-2 right-2 rounded-full border border-border bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 shadow-sm cursor-pointer"
+      >
+        Clear
+      </button>
+    </div>
+  );
+}
+
+function HandToHandSignatureModal({
+  isOpen,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (data: { receiverName: string; receiverRelationship: string; receiverSignature: string }) => void;
+}) {
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverRelationship, setReceiverRelationship] = useState("");
+  const [signature, setSignature] = useState("");
+  const [error, setError] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiverName.trim()) {
+      setError("Please enter the receiver's full name.");
+      return;
+    }
+    if (!signature) {
+      setError("Please capture the receiver's digital signature.");
+      return;
+    }
+    setError("");
+    onConfirm({
+      receiverName: receiverName.trim(),
+      receiverRelationship: receiverRelationship.trim() || "Assigned Representative",
+      receiverSignature: signature,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-2 text-primary">
+            <FileCheck2 className="size-5" />
+            <h3 className="text-base font-bold text-foreground">Hand to Hand Verification</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            This trip requires Hand to Hand drop-off verification. Please capture the assigned receiver's details and digital signature to complete the trip.
+          </p>
+
+          {error && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Full Name *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Jane Doe"
+              value={receiverName}
+              onChange={(e) => setReceiverName(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none focus:border-primary"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Relationship / Role (Optional)</label>
+            <input
+              type="text"
+              placeholder="e.g. Nurse, Guardian, Staff, Family Member"
+              value={receiverRelationship}
+              onChange={(e) => setReceiverRelationship(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none focus:border-primary"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Digital Signature *</label>
+            <SignaturePad value={signature} onChange={setSignature} />
+            <p className="mt-1 text-[11px] text-muted-foreground">Sign above using finger or mouse.</p>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-brand-success px-5 py-2 text-xs font-bold text-white hover:bg-emerald-600 shadow-sm cursor-pointer"
+            >
+              Confirm & Complete Trip
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function RideDetailsOverview() {
   const [trip, setTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const fetchTrip = async () => {
     if (typeof window === "undefined") return;
@@ -493,10 +695,14 @@ export function RideDetailsOverview() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!trip) return;
-    if (shiftStatus !== "IN_PROGRESS") {
-      setShowShiftAlert(true);
+    const isHandToHand = Array.isArray(trip.mobilityOptions) &&
+      trip.mobilityOptions.some((opt: string) => opt.toLowerCase().includes("hand"));
+
+    if (newStatus === "COMPLETED" && isHandToHand && !trip.receiverSignature) {
+      setShowSignatureModal(true);
       return;
     }
+
     const session = getDriverSession();
     const token = session?.token;
     if (!token) return;
@@ -504,6 +710,21 @@ export function RideDetailsOverview() {
     if (res.success) {
       fetchTrip();
     } else if (res.error?.code === "SHIFT_NOT_STARTED") {
+      setShowShiftAlert(true);
+    }
+  };
+
+  const handleConfirmHandToHand = async (data: { receiverName: string; receiverRelationship: string; receiverSignature: string }) => {
+    if (!trip) return;
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) return;
+    const res = await updateDriverTripStatusApi(token, trip._id, "COMPLETED", data);
+    if (res.success) {
+      setShowSignatureModal(false);
+      fetchTrip();
+    } else if (res.error?.code === "SHIFT_NOT_STARTED") {
+      setShowSignatureModal(false);
       setShowShiftAlert(true);
     }
   };
@@ -822,6 +1043,12 @@ export function RideDetailsOverview() {
       <ShiftAlertModal
         isOpen={showShiftAlert}
         onClose={() => setShowShiftAlert(false)}
+      />
+
+      <HandToHandSignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onConfirm={handleConfirmHandToHand}
       />
     </section>
   );
