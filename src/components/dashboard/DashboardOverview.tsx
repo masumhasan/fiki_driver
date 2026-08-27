@@ -51,91 +51,43 @@ type Trip = {
   mapsUrl: string;
 };
 
-const summaryItems: SummaryItem[] = [
-  {
-    label: "Today's trips",
-    value: "4",
-    detail: "Daily schedule",
-    icon: CalendarDays,
-    tone: "primary",
-  },
-  {
-    label: "Completed",
-    value: "1",
-    detail: "25% of schedule",
-    icon: CheckCircle2,
-    tone: "success",
-  },
-  {
-    label: "Upcoming",
-    value: "2",
-    detail: "Next at 10:15 AM",
-    icon: Clock3,
-    tone: "secondary",
-  },
-  {
-    label: "Total distance",
-    value: "17.5 mi",
-    detail: "Est. 84 min driving",
-    icon: Route,
-    tone: "primary",
-  },
-];
+function SummaryCardSkeleton() {
+  return (
+    <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(8,37,82,0.04)] animate-pulse">
+      <div className="size-10 shrink-0 rounded-xl bg-muted" />
+      <div className="space-y-2 flex-1">
+        <div className="h-3 w-20 rounded bg-muted" />
+        <div className="h-6 w-12 rounded bg-muted" />
+        <div className="h-2.5 w-24 rounded bg-muted" />
+      </div>
+    </div>
+  );
+}
 
-const trips: Trip[] = [
-  {
-    id: "TRP-2847",
-    status: "inProgress",
-    rideType: "One way",
-    time: "8:00 AM – 8:45 AM",
-    passenger: "Margaret Johnson",
-    initials: "MJ",
-    mobility: "Wheelchair",
-    pickup: "1204 NW 14th Ave, Miami, FL 33125",
-    dropoff: "1611 NW 12th Ave, Miami, FL 33136",
-    mapsUrl:
-      "https://www.google.com/maps/search/?api=1&query=1204%20NW%2014th%20Ave%20Miami%20FL",
-  },
-  {
-    id: "TRP-2848",
-    status: "scheduled",
-    rideType: "Round trip",
-    time: "10:15 AM – 11:00 AM",
-    passenger: "Robert Chen",
-    initials: "RC",
-    mobility: "Walker",
-    pickup: "8900 SW 117th Ave, Miami, FL 33186",
-    dropoff: "9100 SW 97th Ave, Miami, FL 33176",
-    mapsUrl:
-      "https://www.google.com/maps/search/?api=1&query=8900%20SW%20117th%20Ave%20Miami%20FL",
-  },
-  {
-    id: "TRP-2849",
-    status: "completed",
-    rideType: "One way",
-    time: "1:30 PM – 2:10 PM",
-    passenger: "Dorothy Williams",
-    initials: "DW",
-    mobility: "Ambulatory",
-    pickup: "2501 SW 3rd Ave, Miami, FL 33129",
-    dropoff: "1400 NW 12th Ave, Miami, FL 33136",
-    mapsUrl:
-      "https://www.google.com/maps/search/?api=1&query=2501%20SW%203rd%20Ave%20Miami%20FL",
-  },
-  {
-    id: "TRP-2850",
-    status: "scheduled",
-    rideType: "Round trip",
-    time: "3:45 PM – 4:30 PM",
-    passenger: "Harold Garcia",
-    initials: "HG",
-    mobility: "Wheelchair",
-    pickup: "7800 W Flagler St, Miami, FL 33144",
-    dropoff: "9075 SW 87th Ave, Miami, FL 33176",
-    mapsUrl:
-      "https://www.google.com/maps/search/?api=1&query=7800%20W%20Flagler%20St%20Miami%20FL",
-  },
-];
+function TripCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_6px_20px_rgba(8,37,82,0.05)] animate-pulse space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <div className="h-5 w-16 rounded-full bg-muted" />
+          <div className="h-5 w-20 rounded-full bg-muted" />
+        </div>
+        <div className="h-4 w-28 rounded bg-muted" />
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="size-10 rounded-full bg-muted" />
+        <div className="space-y-2 flex-1">
+          <div className="h-4 w-36 rounded bg-muted" />
+          <div className="h-3 w-24 rounded bg-muted" />
+        </div>
+      </div>
+      <div className="space-y-2.5 rounded-xl bg-muted/40 p-3.5">
+        <div className="h-3.5 w-3/4 rounded bg-muted" />
+        <div className="h-3.5 w-2/3 rounded bg-muted" />
+      </div>
+    </div>
+  );
+}
 
 const summaryToneStyles: Record<SummaryTone, string> = {
   primary: "bg-primary/7 text-primary",
@@ -557,13 +509,15 @@ export function DashboardOverview() {
     day: "numeric",
   }).format(today);
 
-  const [liveTrips, setLiveTrips] = useState<any[] | null>(null);
+  const [liveTrips, setLiveTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dispatchNumber, setDispatchNumber] = useState("+18003454825");
   const [sessionVehicle, setSessionVehicle] = useState<any>(null);
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
 
   const fetchTrips = () => {
+    setLoading(true);
     import("@/lib/auth").then(({ getDriverSession }) => {
       const session = getDriverSession();
       if (session?.vehicle) {
@@ -572,68 +526,73 @@ export function DashboardOverview() {
       const token = session?.token;
       if (token) {
         import("@/lib/api").then(({ getDispatchNumberApi, getTodayShiftApi, getDriverTripsApi }) => {
-          getDispatchNumberApi(token).then((res) => {
-            if (res.success && res.data) {
-              setDispatchNumber(res.data.dispatchNumber);
-            }
-          });
-          getTodayShiftApi(token).then((res) => {
-            if (res.success && res.data && res.data.shift) {
-              setShiftStatus(res.data.shift.status);
-            } else {
-              setShiftStatus(null);
-            }
-          });
-          getDriverTripsApi(token).then((res) => {
-            if (res.success && res.data && Array.isArray(res.data.trips)) {
-              const mapped = res.data.trips.map((t: any) => {
-                let uiStatus: TripStatus = "scheduled";
-                if (t.status === "COMPLETED") uiStatus = "completed";
-                else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+          Promise.all([
+            getDispatchNumberApi(token).then((res) => {
+              if (res.success && res.data) {
+                setDispatchNumber(res.data.dispatchNumber);
+              }
+            }),
+            getTodayShiftApi(token).then((res) => {
+              if (res.success && res.data && res.data.shift) {
+                setShiftStatus(res.data.shift.status);
+              } else {
+                setShiftStatus(null);
+              }
+            }),
+            getDriverTripsApi(token).then((res) => {
+              if (res.success && res.data && Array.isArray(res.data.trips)) {
+                const mapped = res.data.trips.map((t: any) => {
+                  let uiStatus: TripStatus = "scheduled";
+                  if (t.status === "COMPLETED") uiStatus = "completed";
+                  else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
 
-                let nextStatus = "";
-                let nextActionLabel = "";
-                if (t.status === "ACCEPTED") {
-                  nextStatus = "DRIVER_ARRIVING";
-                  nextActionLabel = "Start Pickup";
-                } else if (t.status === "DRIVER_ARRIVING") {
-                  nextStatus = "DRIVER_ARRIVED";
-                  nextActionLabel = "Mark Arrived";
-                } else if (t.status === "DRIVER_ARRIVED") {
-                  nextStatus = "IN_PROGRESS";
-                  nextActionLabel = "Pick Up Passenger";
-                } else if (t.status === "IN_PROGRESS") {
-                  nextStatus = "COMPLETED";
-                  nextActionLabel = "Complete Drop-off";
-                }
+                  let nextStatus = "";
+                  let nextActionLabel = "";
+                  if (t.status === "ACCEPTED") {
+                    nextStatus = "DRIVER_ARRIVING";
+                    nextActionLabel = "Start Pickup";
+                  } else if (t.status === "DRIVER_ARRIVING") {
+                    nextStatus = "DRIVER_ARRIVED";
+                    nextActionLabel = "Mark Arrived";
+                  } else if (t.status === "DRIVER_ARRIVED") {
+                    nextStatus = "IN_PROGRESS";
+                    nextActionLabel = "Pick Up Passenger";
+                  } else if (t.status === "IN_PROGRESS") {
+                    nextStatus = "COMPLETED";
+                    nextActionLabel = "Complete Drop-off";
+                  }
 
-                const passengerName = t.fullName || t.passengerId?.name || "Passenger";
-                const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+                  const passengerName = t.fullName || t.passengerId?.name || "Passenger";
+                  const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
 
-                return {
-                  id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
-                  rawId: t._id,
-                  status: uiStatus,
-                  rideType: t.tripType || "One way",
-                  time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
-                  passenger: passengerName,
-                  initials,
-                  mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
-                  pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
-                  dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
-                  mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
-                  nextStatus,
-                  nextActionLabel,
-                };
-              });
-              setLiveTrips(mapped);
-            } else {
-              setLiveTrips([]);
-            }
+                  return {
+                    id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
+                    rawId: t._id,
+                    status: uiStatus,
+                    rideType: t.tripType || "One way",
+                    time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
+                    passenger: passengerName,
+                    initials,
+                    mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
+                    pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
+                    dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
+                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
+                    nextStatus,
+                    nextActionLabel,
+                  };
+                });
+                setLiveTrips(mapped);
+              } else {
+                setLiveTrips([]);
+              }
+            }),
+          ]).finally(() => {
+            setLoading(false);
           });
         });
       } else {
         setLiveTrips([]);
+        setLoading(false);
       }
     });
   };
@@ -660,50 +619,47 @@ export function DashboardOverview() {
     }
   };
 
-
-  const activeTripList: any[] = (liveTrips !== null ? liveTrips : trips).map((t: any) => ({
+  const activeTripList: any[] = liveTrips.map((t: any) => ({
     ...t,
     onStatusChange: handleStatusChange,
   }));
 
-  const totalTrips = liveTrips ? liveTrips.length : 4;
-  const completedCount = liveTrips ? liveTrips.filter((t) => t.status === "completed").length : 1;
-  const upcomingTrips = liveTrips ? liveTrips.filter((t) => t.status !== "completed") : [];
-  const upcomingCount = liveTrips ? upcomingTrips.length : 2;
+  const totalTrips = liveTrips.length;
+  const completedCount = liveTrips.filter((t) => t.status === "completed").length;
+  const upcomingTrips = liveTrips.filter((t) => t.status !== "completed");
+  const upcomingCount = upcomingTrips.length;
   const nextPickup = upcomingTrips.length > 0 ? upcomingTrips[0] : null;
 
-  const dynamicSummaryItems: SummaryItem[] = liveTrips
-    ? [
-      {
-        label: "Today's trips",
-        value: String(totalTrips),
-        detail: "Daily schedule",
-        icon: CalendarDays,
-        tone: "primary",
-      },
-      {
-        label: "Completed",
-        value: String(completedCount),
-        detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
-        icon: CheckCircle2,
-        tone: "success",
-      },
-      {
-        label: "Upcoming",
-        value: String(upcomingCount),
-        detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
-        icon: Clock3,
-        tone: "secondary",
-      },
-      {
-        label: "Total distance",
-        value: `${(totalTrips * 4.5).toFixed(1)} mi`,
-        detail: `Est. ${totalTrips * 15} min driving`,
-        icon: Route,
-        tone: "primary",
-      },
-    ]
-    : summaryItems;
+  const dynamicSummaryItems: SummaryItem[] = [
+    {
+      label: "Today's trips",
+      value: String(totalTrips),
+      detail: "Daily schedule",
+      icon: CalendarDays,
+      tone: "primary",
+    },
+    {
+      label: "Completed",
+      value: String(completedCount),
+      detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
+      icon: CheckCircle2,
+      tone: "success",
+    },
+    {
+      label: "Upcoming",
+      value: String(upcomingCount),
+      detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
+      icon: Clock3,
+      tone: "secondary",
+    },
+    {
+      label: "Total distance",
+      value: `${(totalTrips * 4.5).toFixed(1)} mi`,
+      detail: `Est. ${totalTrips * 15} min driving`,
+      icon: Route,
+      tone: "primary",
+    },
+  ];
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -712,9 +668,13 @@ export function DashboardOverview() {
       </h1>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {dynamicSummaryItems.map((item) => (
-          <SummaryCard key={item.label} item={item} />
-        ))}
+        {loading ? (
+          [1, 2, 3, 4].map((i) => <SummaryCardSkeleton key={i} />)
+        ) : (
+          dynamicSummaryItems.map((item) => (
+            <SummaryCard key={item.label} item={item} />
+          ))
+        )}
       </div>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -734,7 +694,9 @@ export function DashboardOverview() {
           </div>
 
           <div className="space-y-3">
-            {activeTripList.length === 0 ? (
+            {loading ? (
+              [1, 2].map((i) => <TripCardSkeleton key={i} />)
+            ) : activeTripList.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[0_6px_20px_rgba(8,37,82,0.05)]">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <CalendarDays className="size-6" />
@@ -759,7 +721,7 @@ export function DashboardOverview() {
 
         <aside aria-label="Daily information" className="space-y-3">
           <WorkingHoursPanel />
-          <NextPickupPanel nextPickup={nextPickup} />
+          <NextPickupPanel nextPickup={loading ? undefined : nextPickup} />
           <VehiclePanel vehicle={sessionVehicle} />
           <EmergencyPanel dispatchNumber={dispatchNumber} />
           <NotificationsPanel />
