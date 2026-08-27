@@ -739,13 +739,104 @@ export function RideDetailsOverview() {
     fetchTrip();
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-96 flex-col items-center justify-center gap-3">
-        <Loader2 className="size-8 animate-spin text-primary" />
-        <p className="text-sm font-semibold text-muted-foreground">Loading ride details...</p>
+function RideDetailsSkeleton() {
+  return (
+    <section className="mx-auto w-full max-w-6xl space-y-5 animate-pulse">
+      {/* Top Bar Skeleton */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-20 rounded-xl bg-muted" />
+          <div className="h-5 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-24 rounded bg-muted" />
+            <div className="h-6 w-20 rounded-full bg-muted" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-9 w-28 rounded-xl bg-muted" />
+          <div className="h-9 w-32 rounded-xl bg-muted" />
+        </div>
       </div>
-    );
+
+      {/* Main Trip Card Skeleton */}
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between gap-5">
+          <div className="flex items-center gap-3.5">
+            <div className="size-12 rounded-2xl bg-muted shrink-0" />
+            <div className="space-y-2">
+              <div className="h-5 w-40 rounded bg-muted" />
+              <div className="h-3 w-28 rounded bg-muted" />
+              <div className="flex gap-2 pt-1">
+                <div className="h-5 w-20 rounded-full bg-muted" />
+                <div className="h-5 w-16 rounded-full bg-muted" />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-6 sm:border-l sm:border-border sm:pl-8">
+            <div className="space-y-1 text-right">
+              <div className="h-3 w-10 rounded bg-muted ml-auto" />
+              <div className="h-4 w-20 rounded bg-muted ml-auto" />
+            </div>
+            <div className="space-y-1 text-right">
+              <div className="h-3 w-10 rounded bg-muted ml-auto" />
+              <div className="h-4 w-16 rounded bg-muted ml-auto" />
+            </div>
+            <div className="space-y-1 text-right">
+              <div className="h-3 w-10 rounded bg-muted ml-auto" />
+              <div className="h-4 w-16 rounded bg-muted ml-auto" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid 2 Column Layout Skeleton */}
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="h-4 w-28 rounded bg-muted" />
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-16 rounded-xl bg-muted/60" />
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="h-4 w-36 rounded bg-muted" />
+            <div className="h-12 rounded-xl bg-muted/40" />
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="h-4 w-36 rounded bg-muted" />
+            <div className="h-12 rounded-xl bg-muted/40" />
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="h-4 w-40 rounded bg-muted" />
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-1">
+                  <div className="h-3 w-16 rounded bg-muted" />
+                  <div className="h-4 w-24 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="h-4 w-28 rounded bg-muted" />
+            <div className="h-24 rounded-xl bg-muted/40" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+  if (loading) {
+    return <RideDetailsSkeleton />;
   }
 
   const session = getDriverSession();
