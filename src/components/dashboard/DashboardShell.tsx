@@ -7,6 +7,7 @@ import {
   CarFront,
   ChevronDown,
   Hash,
+  IdCard,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -149,6 +150,24 @@ function NavigationLink({
 
 function Sidebar({ session, onNavigate }: SidebarProps) {
   const router = useRouter();
+  const [shiftStatus, setShiftStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = session?.token;
+    if (token) {
+      import("@/lib/api").then(({ getTodayShiftApi }) => {
+        getTodayShiftApi(token)
+          .then((res) => {
+            if (res.success && res.data && res.data.shift) {
+              setShiftStatus(res.data.shift.status);
+            } else {
+              setShiftStatus(null);
+            }
+          })
+          .catch(() => {});
+      });
+    }
+  }, [session?.token]);
 
   function signOut() {
     clearDriverSession();
@@ -158,15 +177,25 @@ function Sidebar({ session, onNavigate }: SidebarProps) {
 
   const vehicleMakeModel = formatVehicleLine(session?.vehicle);
   const licensePlate = session?.vehicle?.licensePlate ?? "—";
-  const availabilityStatus = session?.availabilityStatus ?? "OFFLINE";
+  const licenseNumber = session?.licenseNumber ?? "DL-987654321";
 
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    ONLINE: { label: "On duty", className: "text-brand-success" },
-    OFFLINE: { label: "Off duty", className: "text-primary-foreground/50" },
-    ASSIGNED: { label: "Assigned", className: "text-secondary" },
-    UNAVAILABLE: { label: "Unavailable", className: "text-red-400" },
-  };
-  const status = statusConfig[availabilityStatus] ?? statusConfig.OFFLINE;
+  // Dynamic Driver Status
+  let statusLabel = "Off duty";
+  let statusClassName = "text-primary-foreground/50";
+
+  if (shiftStatus === "IN_PROGRESS") {
+    statusLabel = "On duty";
+    statusClassName = "text-brand-success font-medium";
+  } else if (session?.availabilityStatus === "ONLINE") {
+    statusLabel = "On duty";
+    statusClassName = "text-brand-success font-medium";
+  } else if (session?.availabilityStatus === "ASSIGNED") {
+    statusLabel = "Assigned";
+    statusClassName = "text-secondary font-medium";
+  } else if (session?.availabilityStatus === "UNAVAILABLE") {
+    statusLabel = "Unavailable";
+    statusClassName = "text-red-400 font-medium";
+  }
 
   return (
     <div className="flex h-full flex-col bg-primary text-primary-foreground">
@@ -200,9 +229,13 @@ function Sidebar({ session, onNavigate }: SidebarProps) {
             <Hash className="size-3.5 text-secondary" />
             {licensePlate}
           </p>
-          <p className={cn("mt-2 flex items-center gap-2", status.className)}>
+          <p className="mt-2 flex items-center gap-2 text-primary-foreground/75">
+            <IdCard className="size-3.5 text-secondary" />
+            {licenseNumber}
+          </p>
+          <p className={cn("mt-2 flex items-center gap-2", statusClassName)}>
             <Activity className="size-3.5" />
-            {status.label}
+            {statusLabel}
           </p>
         </div>
       </nav>

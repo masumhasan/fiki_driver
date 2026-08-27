@@ -68,6 +68,7 @@ export function LoginForm() {
       accountStatus: user.accountStatus,
       approvalStatus: profileData?.approvalStatus ?? "PENDING",
       vehicle: profileData?.vehicle ?? undefined,
+      licenseNumber: profileData?.licenseNumber ?? "DL-987654321",
       availabilityStatus: profileData?.availabilityStatus ?? "OFFLINE",
     });
 

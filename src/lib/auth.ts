@@ -18,6 +18,7 @@ export type DriverSession = {
     color?: string;
     licensePlate?: string;
   };
+  licenseNumber?: string;
   availabilityStatus?: "OFFLINE" | "ONLINE" | "ASSIGNED" | "UNAVAILABLE";
 };
 
