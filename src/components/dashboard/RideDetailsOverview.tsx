@@ -243,8 +243,8 @@ function TripStatusPanel({
           { label: "Accepted", state: "complete", time: acceptedTime },
           { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
           { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
-          { label: "Heading to destination", state: "complete", time: inProgressTime || arrivedTime },
-          { label: "Trip completed", state: "current", time: completedTime || inProgressTime },
+          { label: "Heading to destination", state: "current", time: inProgressTime || arrivedTime },
+          { label: "Trip completed", state: "upcoming", time: null },
         ];
       case "COMPLETED":
         return [
@@ -604,10 +604,10 @@ export function RideDetailsOverview() {
     nextStatusText = "Pick up passenger";
     nextStatusVal = "IN_PROGRESS";
   } else if (trip.status === "IN_PROGRESS") {
-    statusBadgeLabel = "In progress";
+    statusBadgeLabel = "Heading to destination";
     dropoffActionText = "Complete drop-off";
     dropoffActionNext = "COMPLETED";
-    nextStatusText = "Mark heading to destination";
+    nextStatusText = "Complete drop-off";
     nextStatusVal = "COMPLETED";
   } else if (trip.status === "COMPLETED") {
     statusBadgeLabel = "Completed";

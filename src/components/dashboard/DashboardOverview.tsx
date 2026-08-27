@@ -595,16 +595,16 @@ export function DashboardOverview() {
                 let nextActionLabel = "";
                 if (t.status === "ACCEPTED") {
                   nextStatus = "DRIVER_ARRIVING";
-                  nextActionLabel = "Mark Arriving";
+                  nextActionLabel = "Start Pickup";
                 } else if (t.status === "DRIVER_ARRIVING") {
                   nextStatus = "DRIVER_ARRIVED";
                   nextActionLabel = "Mark Arrived";
                 } else if (t.status === "DRIVER_ARRIVED") {
                   nextStatus = "IN_PROGRESS";
-                  nextActionLabel = "Start Trip";
+                  nextActionLabel = "Pick Up Passenger";
                 } else if (t.status === "IN_PROGRESS") {
                   nextStatus = "COMPLETED";
-                  nextActionLabel = "Complete Trip";
+                  nextActionLabel = "Complete Drop-off";
                 }
 
                 const passengerName = t.fullName || t.passengerId?.name || "Passenger";
