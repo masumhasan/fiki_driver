@@ -13,82 +13,69 @@ import {
   WalletCards,
 } from "lucide-react";
 
-const summary = [
-  ["$14/hr", "Hourly Rate", CircleDollarSign],
-  ["80 hrs", "Approved Hours", Clock3],
-  ["40", "Completed Trips", Route],
-  ["40 × $3", "Trip Bonus", TrendingUp],
-  ["$1,240.00", "Total Salary", WalletCards],
-] as const;
-
-const rides = [
-  [
-    "Jul 27",
-    "TRP-1001",
-    "Maria Chen",
-    "Standard",
-    "123 Main St",
-    "Miami Airport",
-  ],
-  [
-    "Jul 27",
-    "TRP-1002",
-    "James Wilson",
-    "Express",
-    "45 Park Ave",
-    "Brickell City",
-  ],
-  [
-    "Jul 26",
-    "TRP-1003",
-    "Sarah Johnson",
-    "Standard",
-    "789 Oak Blvd",
-    "Wynwood Arts",
-  ],
-  [
-    "Jul 26",
-    "TRP-1004",
-    "Robert Davis",
-    "Standard",
-    "321 Elm St",
-    "Coral Gables",
-  ],
-  [
-    "Jul 25",
-    "TRP-1005",
-    "Emily Martinez",
-    "Express",
-    "654 Pine Rd",
-    "South Beach",
-  ],
-  [
-    "Jul 25",
-    "TRP-1006",
-    "Michael Brown",
-    "Standard",
-    "987 Cedar Ln",
-    "Coconut Grove",
-  ],
-  [
-    "Jul 24",
-    "TRP-1007",
-    "Jessica Taylor",
-    "Standard",
-    "147 Maple Dr",
-    "Little Havana",
-  ],
-  [
-    "Jul 24",
-    "TRP-1008",
-    "David Anderson",
-    "Express",
-    "258 Birch Way",
-    "Design District",
-  ],
-];
+function EarningsSkeleton() {
+  return (
+    <section className="space-y-5 animate-pulse">
+      <div className="flex justify-end">
+        <div className="h-10 w-44 rounded-xl bg-muted" />
+      </div>
+      <div className="rounded-2xl bg-[#112f5f] p-6 sm:p-8 text-white shadow-md">
+        <div className="grid md:grid-cols-[1.5fr_1fr] gap-6">
+          <div className="space-y-3">
+            <div className="h-3 w-32 rounded bg-white/20" />
+            <div className="h-10 w-48 rounded bg-white/20" />
+            <div className="h-3 w-28 rounded bg-white/20" />
+            <div className="h-4 w-40 rounded bg-white/20" />
+            <div className="h-8 w-56 rounded-xl bg-white/10 mt-4" />
+          </div>
+          <div className="space-y-4 border-t border-white/10 pt-6 md:border-l md:border-t-0 md:pt-0 md:pl-6">
+            <div className="h-3 w-28 rounded bg-white/20" />
+            <div className="h-6 w-32 rounded bg-white/20" />
+            <div className="space-y-3 pt-2">
+              <div className="h-4 w-40 rounded bg-white/10" />
+              <div className="h-4 w-36 rounded bg-white/10" />
+              <div className="h-4 w-28 rounded bg-white/10" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
+            <div className="size-9 rounded-xl bg-muted" />
+            <div className="h-5 w-20 rounded bg-muted" />
+            <div className="h-3 w-24 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <div className="h-4 w-36 rounded bg-muted" />
+        <div className="divide-y divide-border pt-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex justify-between py-4">
+              <div className="space-y-2">
+                <div className="h-4 w-32 rounded bg-muted" />
+                <div className="h-3 w-24 rounded bg-muted" />
+              </div>
+              <div className="h-5 w-20 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <div className="h-4 w-28 rounded bg-muted" />
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 w-full rounded bg-muted/40" />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function EarningsOverview() {
+  const [loading, setLoading] = useState(true);
   const [liveEarnings, setLiveEarnings] = useState<{
     hourlyRate: number;
     approvedHours: number;
@@ -114,6 +101,7 @@ export function EarningsOverview() {
   } | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     import("@/lib/auth").then(({ getDriverSession }) => {
       const session = getDriverSession();
       const token = session?.token;
@@ -122,21 +110,29 @@ export function EarningsOverview() {
           if (res.success && res.data) {
             setLiveEarnings(res.data);
           }
+        }).finally(() => {
+          setLoading(false);
         });
+      } else {
+        setLoading(false);
       }
     });
   }, []);
 
-  const hourlyRate = liveEarnings?.hourlyRate ?? 14;
-  const approvedHours = liveEarnings?.approvedHours ?? 80;
-  const completedTripsCount = liveEarnings?.completedTripsCount ?? 40;
+  if (loading) {
+    return <EarningsSkeleton />;
+  }
+
+  const hourlyRate = liveEarnings?.hourlyRate ?? 0;
+  const approvedHours = liveEarnings?.approvedHours ?? 0;
+  const completedTripsCount = liveEarnings?.completedTripsCount ?? 0;
   const tripBonusRate = liveEarnings?.tripBonusRate ?? liveEarnings?.tripBonusPerRide ?? 3;
   const tripBonus = liveEarnings?.tripBonus ?? (completedTripsCount * tripBonusRate);
   const regularWages = liveEarnings?.regularWages ?? (hourlyRate * approvedHours);
   const grossEarnings = liveEarnings?.grossEarnings ?? (regularWages + tripBonus);
 
-  const payPeriodRange = liveEarnings?.payPeriodRange || "Jul 14 – Jul 27, 2026";
-  const expectedPayDate = liveEarnings?.expectedPayDate || "Jul 31, 2026";
+  const payPeriodRange = liveEarnings?.payPeriodRange || "Current Pay Period";
+  const expectedPayDate = liveEarnings?.expectedPayDate || "Next Pay Date";
 
   const summary = [
     [`$${hourlyRate}/hr`, "Hourly Rate", CircleDollarSign],
@@ -146,18 +142,7 @@ export function EarningsOverview() {
     [`$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Total Salary", WalletCards],
   ] as const;
 
-  const rideList = liveEarnings?.rideHistory?.length
-    ? liveEarnings.rideHistory.map((r) => [
-        r.date,
-        r.tripId,
-        r.passenger,
-        r.type,
-        r.pickup,
-        r.destination,
-        r.status,
-        r.bonus,
-      ])
-    : rides;
+  const rideList = liveEarnings?.rideHistory || [];
 
   return (
     <section aria-labelledby="earnings-title" className="space-y-5">
@@ -285,24 +270,30 @@ export function EarningsOverview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rideList.map((ride, rIdx) => (
-                <tr key={ride[1] + rIdx}>
-                  {ride.slice(0, 6).map((cell, index) => (
-                    <td
-                      key={index}
-                      className={`px-4 py-3 ${index === 1 ? "font-semibold text-blue-600" : index === 0 || index > 2 ? "text-muted-foreground" : ""}`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
-                      {ride[6] || "Completed"}
-                    </span>
+              {rideList.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-xs text-muted-foreground font-semibold">
+                    No completed rides found in this pay period.
                   </td>
-                  <td className="px-4 py-3 font-bold text-emerald-600">{ride[7] || "+$3.00"}</td>
                 </tr>
-              ))}
+              ) : (
+                rideList.map((ride, rIdx) => (
+                  <tr key={ride.tripId + rIdx}>
+                    <td className="px-4 py-3 text-muted-foreground">{ride.date}</td>
+                    <td className="px-4 py-3 font-semibold text-blue-600">{ride.tripId}</td>
+                    <td className="px-4 py-3">{ride.passenger}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{ride.type}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{ride.pickup}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{ride.destination}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
+                        {ride.status || "Completed"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-bold text-emerald-600">{ride.bonus || "+$3.00"}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
