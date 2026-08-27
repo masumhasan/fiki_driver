@@ -389,11 +389,33 @@ function NextPickupPanel({ nextPickup }: { nextPickup?: Trip | null }) {
   );
 }
 
-function VehiclePanel({ vehicle }: { vehicle?: { make?: string; model?: string; year?: number; color?: string; licensePlate?: string } }) {
+const fuelLevelLabels: Record<string, string> = {
+  empty: "Empty (E)",
+  quarter: "1/4 (Low)",
+  half: "1/2 (Half)",
+  "three-quarters": "3/4 (Mostly Full)",
+  three_quarters: "3/4 (Mostly Full)",
+  full: "Full (F)",
+  "E": "Empty (E)",
+  "1/4": "1/4 (Low)",
+  "1/2": "1/2 (Half)",
+  "3/4": "3/4 (Mostly Full)",
+  "F": "Full (F)",
+};
+
+function VehiclePanel({
+  vehicle,
+  shiftStatus,
+  shiftFuel,
+}: {
+  vehicle?: { make?: string; model?: string; year?: number; color?: string; licensePlate?: string };
+  shiftStatus?: string | null;
+  shiftFuel?: string | null;
+}) {
   const vehicleName = vehicle
     ? [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ")
-    : "Toyota Sienna 2023";
-  const plate = vehicle?.licensePlate || "MIA-4821";
+    : "—";
+  const plate = vehicle?.licensePlate || "—";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -420,16 +442,16 @@ function VehiclePanel({ vehicle }: { vehicle?: { make?: string; model?: string; 
             <Fuel aria-hidden="true" className="size-3.5" />
             Fuel
           </dt>
-          <dd className="font-semibold text-foreground">78% remaining</dd>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt className="flex items-center gap-2 text-muted-foreground">
-            <Accessibility aria-hidden="true" className="size-3.5" />
-            Wheelchair lift
-          </dt>
-          <dd className="flex items-center gap-1.5 font-semibold text-brand-success">
-            <CheckCircle2 aria-hidden="true" className="size-3.5" />
-            Operational
+          <dd className="font-semibold">
+            {shiftStatus === "IN_PROGRESS" || shiftStatus === "COMPLETED" ? (
+              shiftFuel ? (
+                <span className="text-foreground">{fuelLevelLabels[shiftFuel] || shiftFuel}</span>
+              ) : (
+                <span className="text-foreground font-medium">Recorded</span>
+              )
+            ) : (
+              <span className="text-amber-500 font-semibold text-xs">Start Your Shift First</span>
+            )}
           </dd>
         </div>
       </dl>
@@ -461,41 +483,7 @@ function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
   );
 }
 
-function NotificationsPanel() {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <Bell aria-hidden="true" className="size-4 text-brand-yellow-hover" />
-          <h2 className="text-sm font-semibold text-foreground">
-            Recent updates
-          </h2>
-        </div>
-        <span className="grid size-5 place-items-center rounded-full bg-destructive text-[0.62rem] font-bold text-primary-foreground">
-          2
-        </span>
-      </div>
-      <ul className="divide-y divide-border">
-        <li className="px-4 py-3">
-          <p className="text-xs font-medium leading-5 text-foreground">
-            New trip TRP-2850 assigned to you
-          </p>
-          <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
-            2 minutes ago
-          </p>
-        </li>
-        <li className="px-4 py-3">
-          <p className="text-xs font-medium leading-5 text-foreground">
-            TRP-2848 pickup updated to 10:15 AM
-          </p>
-          <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
-            14 minutes ago
-          </p>
-        </li>
-      </ul>
-    </section>
-  );
-}
+
 
 export function DashboardOverview() {
   const today = new Date();
@@ -514,6 +502,7 @@ export function DashboardOverview() {
   const [dispatchNumber, setDispatchNumber] = useState("+18003454825");
   const [sessionVehicle, setSessionVehicle] = useState<any>(null);
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
+  const [shiftFuel, setShiftFuel] = useState<string | null>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
 
   const fetchTrips = () => {
@@ -535,8 +524,10 @@ export function DashboardOverview() {
             getTodayShiftApi(token).then((res) => {
               if (res.success && res.data && res.data.shift) {
                 setShiftStatus(res.data.shift.status);
+                setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
               } else {
                 setShiftStatus(null);
+                setShiftFuel(null);
               }
             }),
             getDriverTripsApi(token).then((res) => {
@@ -722,9 +713,8 @@ export function DashboardOverview() {
         <aside aria-label="Daily information" className="space-y-3">
           <WorkingHoursPanel />
           <NextPickupPanel nextPickup={loading ? undefined : nextPickup} />
-          <VehiclePanel vehicle={sessionVehicle} />
+          <VehiclePanel vehicle={sessionVehicle} shiftStatus={shiftStatus} shiftFuel={shiftFuel} />
           <EmergencyPanel dispatchNumber={dispatchNumber} />
-          <NotificationsPanel />
         </aside>
       </div>
 
