@@ -239,25 +239,6 @@ function Sidebar({ session, onNavigate }: SidebarProps) {
           </p>
         </div>
       </nav>
-
-      <div className="border-t border-primary-foreground/10 p-3">
-        <Link
-          href="/settings"
-          onClick={onNavigate}
-          className="flex h-10 items-center gap-3 rounded-xl px-3.5 text-sm text-primary-foreground/60 hover:bg-primary-foreground/8 hover:text-primary-foreground"
-        >
-          <Settings className="size-4" />
-          Settings
-        </Link>
-        <button
-          onClick={signOut}
-          className="flex h-10 items-center gap-3 rounded-xl px-3.5 text-sm text-red-300 hover:bg-destructive/14"
-          type="button"
-        >
-          <LogOut className="size-4" />
-          Sign out
-        </button>
-      </div>
     </div>
   );
 }
@@ -339,10 +320,12 @@ function NotificationsPopover({
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<DriverSession | null>(null);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const mobileNavigationId = useId();
   const notificationsId = useId();
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -498,28 +481,59 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 )}
               </div>
 
-              {/* Live driver name/initials from session */}
-              <button
-                type="button"
-                className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3"
-                aria-label="Open profile menu"
-              >
-                <span className="grid size-7 place-items-center rounded-lg bg-secondary text-[0.7rem] font-bold text-secondary-foreground">
-                  {initials}
-                </span>
-                <span className="hidden text-left sm:block">
-                  <span className="block text-xs font-semibold text-foreground">
-                    {shortName}
+              {/* Live driver name/initials profile dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen((isOpen) => !isOpen)}
+                  aria-expanded={isProfileOpen}
+                  aria-haspopup="true"
+                  className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3 cursor-pointer"
+                  aria-label="Open profile menu"
+                >
+                  <span className="grid size-7 place-items-center rounded-lg bg-secondary text-[0.7rem] font-bold text-secondary-foreground">
+                    {initials}
                   </span>
-                  <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">
-                    Driver
+                  <span className="hidden text-left sm:block">
+                    <span className="block text-xs font-semibold text-foreground">
+                      {shortName}
+                    </span>
+                    <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">
+                      Driver
+                    </span>
                   </span>
-                </span>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="hidden size-3.5 text-muted-foreground sm:block"
-                />
-              </button>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn("hidden size-3.5 text-muted-foreground sm:block transition-transform duration-200", isProfileOpen && "rotate-180")}
+                  />
+                </button>
+
+                {isProfileOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 z-50 w-52 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-[0_10px_30px_rgba(8,37,82,0.12)] backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                      <div className="border-b border-border/80 px-3 py-2.5">
+                        <p className="text-xs font-bold text-foreground">{session?.name || "Driver"}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{session?.email || "driver@fikitransit.com"}</p>
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            clearDriverSession();
+                            router.replace("/login");
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                        >
+                          <LogOut className="size-4" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </header>
