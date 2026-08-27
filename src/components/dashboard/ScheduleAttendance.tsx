@@ -34,6 +34,66 @@ function Card({
   );
 }
 
+function ScheduleSkeleton() {
+  return (
+    <section className="space-y-5 animate-pulse">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+        <div className="h-4 w-36 rounded bg-muted" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-muted/70 p-4 space-y-2">
+              <div className="h-3 w-24 rounded bg-muted" />
+              <div className="h-6 w-20 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="h-4 w-32 rounded bg-muted" />
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 rounded-xl bg-muted/60" />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="h-4 w-44 rounded bg-muted" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 rounded-xl bg-muted/60" />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="h-4 w-36 rounded bg-muted" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-10 rounded-xl bg-muted/60" />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="h-4 w-40 rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-16 rounded-xl bg-muted/60" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="h-4 w-32 rounded bg-muted" />
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="h-10 w-full rounded bg-muted/40" />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ScheduleAttendance() {
   const [shiftModal, setShiftModal] = useState<"start" | "end" | null>(null);
   const [shift, setShift] = useState<any>(null);
@@ -126,13 +186,11 @@ export function ScheduleAttendance() {
       ? "Completed"
       : "Scheduled";
 
-  const upcomingList = summaryData?.upcomingSchedule || [
-    { day: "MON", date: "28", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
-    { day: "TUE", date: "29", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
-    { day: "WED", date: "30", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
-    { day: "THU", date: "31", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
-    { day: "FRI", date: "1", hours: "07:00 AM – 03:00 PM", status: "Scheduled" },
-  ];
+  if (loading) {
+    return <ScheduleSkeleton />;
+  }
+
+  const upcomingList = summaryData?.upcomingSchedule || [];
 
   const tripSummaryItems = [
     [String(summaryData?.tripSummary?.totalTrips ?? 0), "Total Trips", "blue"],
@@ -141,19 +199,11 @@ export function ScheduleAttendance() {
     [String(summaryData?.tripSummary?.remaining ?? 0), "Remaining", "violet"],
   ];
 
-  const weeklyList = summaryData?.weeklySchedule || [
-    { day: "Monday", date: "Jul 21", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Tuesday", date: "Jul 22", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Wednesday", date: "Jul 23", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Thursday", date: "Jul 24", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Friday", date: "Jul 25", shiftHours: "07:00 AM – 03:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Saturday", date: "Jul 26", shiftHours: "08:00 AM – 04:00 PM", total: "8h", attendance: "Present", approval: "Approved" },
-    { day: "Sunday", date: "Jul 27", shiftHours: "08:00 AM – 04:00 PM", total: "—", attendance: isInProgress ? "In Progress" : "Pending", approval: "Pending" },
-  ];
+  const weeklyList = summaryData?.weeklySchedule || [];
 
-  const todayStartDisplay = (summaryData as any)?.todaySchedule?.startTime || "08:00 AM";
-  const todayEndDisplay = (summaryData as any)?.todaySchedule?.endTime || "04:00 PM";
-  const todayHoursDisplay = (summaryData as any)?.todaySchedule?.hours || "8 hours";
+  const todayStartDisplay = (summaryData as any)?.todaySchedule?.startTime || "—";
+  const todayEndDisplay = (summaryData as any)?.todaySchedule?.endTime || "—";
+  const todayHoursDisplay = (summaryData as any)?.todaySchedule?.hours || "—";
 
   return (
     <section aria-labelledby="schedule-page-title" className="space-y-5">
@@ -354,25 +404,31 @@ export function ScheduleAttendance() {
         <Card>
           <h2 className="text-sm font-semibold">Upcoming Schedule</h2>
           <div className="mt-4 space-y-2">
-            {upcomingList.map((item, idx) => (
-              <div
-                key={item.day + idx}
-                className="flex items-center rounded-xl border border-border bg-muted/60 px-4 py-3"
-              >
-                <span className="w-12 border-r border-border text-center">
-                  <small className="block text-[0.6rem] font-bold text-muted-foreground">
-                    {item.day}
-                  </small>
-                  <strong className="text-sm">{item.date}</strong>
-                </span>
-                <span className="ml-4 text-xs text-muted-foreground">
-                  {item.hours}
-                </span>
-                <span className="ml-auto rounded-full bg-blue-100 px-3 py-1 text-[0.68rem] font-semibold text-blue-600">
-                  {item.status}
-                </span>
+            {upcomingList.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground font-semibold">
+                No upcoming scheduled shifts.
               </div>
-            ))}
+            ) : (
+              upcomingList.map((item, idx) => (
+                <div
+                  key={item.day + idx}
+                  className="flex items-center rounded-xl border border-border bg-muted/60 px-4 py-3"
+                >
+                  <span className="w-12 border-r border-border text-center">
+                    <small className="block text-[0.6rem] font-bold text-muted-foreground">
+                      {item.day}
+                    </small>
+                    <strong className="text-sm">{item.date}</strong>
+                  </span>
+                  <span className="ml-4 text-xs text-muted-foreground">
+                    {item.hours}
+                  </span>
+                  <span className="ml-auto rounded-full bg-blue-100 px-3 py-1 text-[0.68rem] font-semibold text-blue-600">
+                    {item.status}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </Card>
 
@@ -424,42 +480,50 @@ export function ScheduleAttendance() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-medium">
-              {weeklyList.map((row, idx) => (
-                <tr key={row.day + idx} className="hover:bg-muted/40">
-                  <td className="px-5 py-3.5 font-bold text-foreground">{row.day}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{row.date}</td>
-                  <td className="px-5 py-3.5 text-foreground">{row.shiftHours}</td>
-                  <td className="px-5 py-3.5 text-foreground">{row.total}</td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={cn(
-                        "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
-                        row.attendance === "Present"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : row.attendance === "In Progress"
-                            ? "bg-amber-100 text-amber-700"
-                            : row.attendance === "Off"
-                              ? "bg-slate-100 text-slate-600"
-                              : "bg-blue-100 text-blue-700",
-                      )}
-                    >
-                      {row.attendance}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={cn(
-                        "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
-                        row.approval === "Approved"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {row.approval}
-                    </span>
+              {weeklyList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground font-semibold">
+                    No weekly schedule entries found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                weeklyList.map((row, idx) => (
+                  <tr key={row.day + idx} className="hover:bg-muted/40">
+                    <td className="px-5 py-3.5 font-bold text-foreground">{row.day}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{row.date}</td>
+                    <td className="px-5 py-3.5 text-foreground">{row.shiftHours}</td>
+                    <td className="px-5 py-3.5 text-foreground">{row.total}</td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={cn(
+                          "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                          row.attendance === "Present"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : row.attendance === "In Progress"
+                              ? "bg-amber-100 text-amber-700"
+                              : row.attendance === "Off"
+                                ? "bg-slate-100 text-slate-600"
+                                : "bg-blue-100 text-blue-700",
+                        )}
+                      >
+                        {row.attendance}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={cn(
+                          "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                          row.approval === "Approved"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {row.approval}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
