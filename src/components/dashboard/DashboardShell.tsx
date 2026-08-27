@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  Bell,
   CalendarDays,
   CarFront,
   ChevronDown,
@@ -11,11 +10,9 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  RefreshCw,
   Route,
   Settings,
   X,
-  Zap,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -47,32 +44,7 @@ const primaryNavigation = [
   },
 ];
 
-const notifications = [
-  {
-    id: "new-trip",
-    title: "New trip TRP-2850 assigned to you",
-    time: "2 min ago",
-    icon: Zap,
-    iconClassName: "bg-primary/6 text-primary",
-    isUnread: true,
-  },
-  {
-    id: "pickup-update",
-    title: "Trip TRP-2848 pickup time updated to 10:15 AM",
-    time: "14 min ago",
-    icon: RefreshCw,
-    iconClassName: "bg-secondary/14 text-brand-yellow-hover",
-    isUnread: true,
-  },
-  {
-    id: "schedule-update",
-    title: "Schedule updated for tomorrow — 3 trips added",
-    time: "1 hr ago",
-    icon: CalendarDays,
-    iconClassName: "bg-brand-success/10 text-brand-success",
-    isUnread: false,
-  },
-];
+
 
 type DashboardShellProps = {
   children: React.ReactNode;
@@ -243,81 +215,7 @@ function Sidebar({ session, onNavigate }: SidebarProps) {
   );
 }
 
-function NotificationsPopover({
-  id,
-  onClose,
-}: {
-  id: string;
-  onClose: () => void;
-}) {
-  return (
-    <section
-      id={id}
-      role="dialog"
-      aria-label="Notifications"
-      className="absolute right-0 top-12 z-40 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card"
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">
-            Notifications
-          </h2>
-          <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
-            2 unread updates
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          aria-label="Close notifications"
-        >
-          <X aria-hidden="true" className="size-4" />
-        </button>
-      </div>
 
-      <div className="divide-y divide-border">
-        {notifications.map((notification) => {
-          const Icon = notification.icon;
-
-          return (
-            <button
-              key={notification.id}
-              type="button"
-              className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-            >
-              <span
-                className={cn(
-                  "grid size-10 shrink-0 place-items-center rounded-xl",
-                  notification.iconClassName,
-                )}
-              >
-                <Icon aria-hidden="true" className="size-[1.1rem]" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium leading-5 text-foreground">
-                  {notification.title}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {notification.time}
-                </span>
-              </span>
-              {notification.isUnread && (
-                <>
-                  <span
-                    className="mt-2 size-2 shrink-0 rounded-full bg-secondary"
-                    aria-hidden="true"
-                  />
-                  <span className="sr-only">Unread notification</span>
-                </>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const router = useRouter();
@@ -459,27 +357,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </div>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <div ref={notificationsRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsNotificationsOpen((isOpen) => !isOpen)}
-                  className="relative grid size-10 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  aria-label="Notifications, 2 unread"
-                  aria-controls={notificationsId}
-                  aria-expanded={isNotificationsOpen}
-                  aria-haspopup="dialog"
-                >
-                  <Bell aria-hidden="true" className="size-[1.1rem]" />
-                  <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-destructive ring-2 ring-card" />
-                </button>
 
-                {isNotificationsOpen && (
-                  <NotificationsPopover
-                    id={notificationsId}
-                    onClose={() => setIsNotificationsOpen(false)}
-                  />
-                )}
-              </div>
 
               {/* Live driver name/initials profile dropdown */}
               <div className="relative">
