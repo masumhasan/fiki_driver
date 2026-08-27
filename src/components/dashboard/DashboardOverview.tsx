@@ -600,7 +600,15 @@ export function DashboardOverview() {
             }),
             getDriverTripsApi(token).then((res) => {
               if (res.success && res.data && Array.isArray(res.data.trips)) {
-                const mapped = res.data.trips.map((t: any) => {
+                const now = new Date();
+                const weekDaysFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                const weekDaysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const todayDayFull = weekDaysFull[now.getDay()];
+                const todayDayShort = weekDaysShort[now.getDay()];
+
+                const mappedList: any[] = [];
+
+                res.data.trips.forEach((t: any) => {
                   let uiStatus: TripStatus = "scheduled";
                   if (t.status === "COMPLETED") uiStatus = "completed";
                   else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
@@ -623,25 +631,73 @@ export function DashboardOverview() {
 
                   const passengerName = t.fullName || t.passengerId?.name || "Passenger";
                   const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+                  const mobility = Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard";
 
-                  return {
+                  const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
+                  const isRoundTrip = t.tripType === "round-trip" || t.tripType === "round_trip" || t.isRoundTrip === true;
+
+                  // Filter recurring trips to ensure they only appear on their scheduled Recurring Days
+                  if (isRecurring && Array.isArray(t.recurringDays) && t.recurringDays.length > 0) {
+                    const matchesDay = t.recurringDays.some((day: string) => {
+                      const d = day.trim().toLowerCase();
+                      return (
+                        d === todayDayFull.toLowerCase() ||
+                        d === todayDayShort.toLowerCase() ||
+                        todayDayFull.toLowerCase().startsWith(d)
+                      );
+                    });
+                    if (!matchesDay) return;
+                  }
+
+                  const formattedStartDate = (t.startDate || t.pickupDate)
+                    ? new Date(t.startDate || t.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    : shortDate;
+
+                  const formattedEndDate = (t.endDate || t.returnDate)
+                    ? new Date(t.endDate || t.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    : formattedStartDate;
+
+                  const outboundPickupTime = t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled");
+
+                  // Outbound Leg
+                  mappedList.push({
                     id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
                     rawId: t._id,
                     status: uiStatus,
-                    rideType: t.tripType || "One way",
-                    time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
-                    date: t.pickupDate ? new Date(t.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : shortDate,
+                    rideType: isRecurring ? "Recurring Trip" : isRoundTrip ? "Round Trip (Outbound)" : (t.tripType || "One way"),
+                    time: outboundPickupTime,
+                    date: formattedStartDate,
                     passenger: passengerName,
                     initials,
-                    mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
-                    pickup: t.pickupLocation?.address || t.streetAddress || "Pickup Location",
-                    dropoff: t.dropoffLocation?.address || t.returnDestinationAddress || "Dropoff Location",
-                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Miami")}`,
+                    mobility,
+                    pickup: t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location",
+                    dropoff: t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location",
+                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Pickup")}`,
                     nextStatus,
                     nextActionLabel,
-                  };
+                  });
+
+                  // Return Leg for Round Trips
+                  if (isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
+                    mappedList.push({
+                      id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
+                      rawId: t._id,
+                      status: uiStatus,
+                      rideType: "Round Trip (Return)",
+                      time: t.returnPickupTime || "Return Pickup",
+                      date: formattedEndDate,
+                      passenger: passengerName,
+                      initials,
+                      mobility,
+                      pickup: t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup",
+                      dropoff: t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination",
+                      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.returnPickupAddress || t.dropoffLocation?.address || "Return")}`,
+                      nextStatus,
+                      nextActionLabel,
+                    });
+                  }
                 });
-                setLiveTrips(mapped);
+                setLiveTrips(mappedList);
               } else {
                 setLiveTrips([]);
               }
