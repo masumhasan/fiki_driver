@@ -43,6 +43,7 @@ type Trip = {
   status: TripStatus;
   rideType: string;
   time: string;
+  date?: string;
   passenger: string;
   initials: string;
   mobility: string;
@@ -228,9 +229,13 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
               <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[0.68rem] font-medium text-muted-foreground">
                 {trip.rideType}
               </span>
+              <span className="ml-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                {trip.date || "Aug 27"}
+              </span>
             </div>
 
             <div className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="font-semibold text-foreground">Pickup Time </span>
               <Clock3 aria-hidden="true" className="size-3.5" />
               {trip.time}
             </div>
@@ -625,6 +630,7 @@ export function DashboardOverview() {
                     status: uiStatus,
                     rideType: t.tripType || "One way",
                     time: t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"),
+                    date: t.pickupDate ? new Date(t.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : shortDate,
                     passenger: passengerName,
                     initials,
                     mobility: Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard",
@@ -739,12 +745,9 @@ export function DashboardOverview() {
                 id="schedule-title"
                 className="text-base font-semibold text-foreground"
               >
-                Today&apos;s schedule
+                Trip Schedules
               </h2>
             </div>
-            <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-              {shortDate}
-            </span>
           </div>
 
           <div className="space-y-3">
