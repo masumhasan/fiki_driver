@@ -312,29 +312,86 @@ function PanelHeader({
   );
 }
 
-function WorkingHoursPanel() {
+function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!todayShift || !todayShift.startedAt) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const calcElapsed = () => {
+      const startTime = new Date(todayShift.startedAt).getTime();
+      const endTime = todayShift.status === "COMPLETED" && todayShift.endedAt
+        ? new Date(todayShift.endedAt).getTime()
+        : Date.now();
+      const diffSec = Math.max(0, Math.floor((endTime - startTime) / 1000));
+      setElapsedSeconds(diffSec);
+    };
+
+    calcElapsed();
+
+    if (todayShift.status === "IN_PROGRESS") {
+      const interval = setInterval(calcElapsed, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [todayShift]);
+
+  const clockInDisplay = todayShift?.startedAt
+    ? new Date(todayShift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "—";
+
+  const clockOutDisplay = todayShift?.status === "COMPLETED" && todayShift?.endedAt
+    ? new Date(todayShift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "—";
+
+  const todayScheduleDisplay = todayShift?.todayScheduleHours || "8:00 AM – 4:00 PM";
+
+  const formatHoursSeconds = (totalSec: number) => {
+    if (totalSec <= 0) return "0h 00m 00s";
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${h}h ${m < 10 ? "0" : ""}${m}m ${s < 10 ? "0" : ""}${s}s`;
+  };
+
+  const total8HoursInSeconds = 8 * 3600;
+  const progressPercent = Math.min(100, Math.round((elapsedSeconds / total8HoursInSeconds) * 100));
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <PanelHeader icon={Timer} title="Working hours" />
       <div className="p-4">
         <dl className="grid grid-cols-2 gap-2">
-          {[
-            ["Clock in", "7:15 AM"],
-            ["Clock out", "5:30 PM"],
-            ["Break", "12:00 PM"],
-            ["Total", "9h 15m"],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-xl bg-muted p-3">
-              <dt className="text-[0.68rem] text-muted-foreground">{label}</dt>
-              <dd className="mt-1 text-sm font-semibold text-foreground">
-                {value}
-              </dd>
-            </div>
-          ))}
+          <div className="rounded-xl bg-muted p-3">
+            <dt className="text-[0.68rem] text-muted-foreground">Clock in</dt>
+            <dd className="mt-1 text-sm font-semibold text-foreground">
+              {clockInDisplay}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-muted p-3">
+            <dt className="text-[0.68rem] text-muted-foreground">Clock out</dt>
+            <dd className="mt-1 text-sm font-semibold text-foreground">
+              {clockOutDisplay}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-muted p-3">
+            <dt className="text-[0.68rem] text-muted-foreground">Today&apos;s schedule</dt>
+            <dd className="mt-1 text-sm font-semibold text-foreground truncate" title={todayScheduleDisplay}>
+              {todayScheduleDisplay}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-muted p-3">
+            <dt className="text-[0.68rem] text-muted-foreground">Today&apos;s hours</dt>
+            <dd className="mt-1 text-sm font-semibold text-foreground font-mono">
+              {formatHoursSeconds(elapsedSeconds)}
+            </dd>
+          </div>
         </dl>
         <div className="mt-4 flex items-center justify-between text-[0.68rem] font-medium text-muted-foreground">
           <span>Day progress</span>
-          <span>35%</span>
+          <span>{progressPercent}%</span>
         </div>
         <div
           className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
@@ -342,9 +399,12 @@ function WorkingHoursPanel() {
           aria-label="Day progress"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={35}
+          aria-valuenow={progressPercent}
         >
-          <div className="h-full w-[35%] rounded-full bg-secondary" />
+          <div
+            className="h-full rounded-full bg-secondary transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
     </section>
@@ -503,6 +563,7 @@ export function DashboardOverview() {
   const [sessionVehicle, setSessionVehicle] = useState<any>(null);
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [shiftFuel, setShiftFuel] = useState<string | null>(null);
+  const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
 
   const fetchTrips = () => {
@@ -525,9 +586,11 @@ export function DashboardOverview() {
               if (res.success && res.data && res.data.shift) {
                 setShiftStatus(res.data.shift.status);
                 setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
+                setTodayShift(res.data.shift);
               } else {
                 setShiftStatus(null);
                 setShiftFuel(null);
+                setTodayShift(null);
               }
             }),
             getDriverTripsApi(token).then((res) => {
@@ -711,7 +774,7 @@ export function DashboardOverview() {
         </section>
 
         <aside aria-label="Daily information" className="space-y-3">
-          <WorkingHoursPanel />
+          <WorkingHoursPanel todayShift={todayShift} />
           <NextPickupPanel nextPickup={loading ? undefined : nextPickup} />
           <VehiclePanel vehicle={sessionVehicle} shiftStatus={shiftStatus} shiftFuel={shiftFuel} />
           <EmergencyPanel dispatchNumber={dispatchNumber} />
