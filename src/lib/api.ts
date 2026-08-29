@@ -172,7 +172,7 @@ export async function getScheduleSummaryApi(token: string) {
   }
 }
 
-export async function startShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string }) {
+export async function startShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string; photoUrl?: string }) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/start`, {
       method: "POST",
@@ -185,7 +185,7 @@ export async function startShiftApi(token: string, data: { odometer: string | nu
   }
 }
 
-export async function endShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string }) {
+export async function endShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string; photoUrl?: string }) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/end`, {
       method: "POST",
@@ -195,6 +195,21 @@ export async function endShiftApi(token: string, data: { odometer: string | numb
     return await res.json();
   } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to end shift" } };
+  }
+}
+
+export async function uploadImageApi(token: string, file: File) {
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch(`${API_BASE_URL}/upload/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to upload image" } };
   }
 }
 

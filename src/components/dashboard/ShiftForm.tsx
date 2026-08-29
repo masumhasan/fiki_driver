@@ -108,6 +108,8 @@ export function ShiftForm({
   const [condition, setCondition] = useState<Condition>('clear')
   const [notes, setNotes] = useState('')
   const [photoName, setPhotoName] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -130,6 +132,26 @@ export function ShiftForm({
       ? (numEndOdo - numStartOdo).toFixed(1)
       : '42.6'
 
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setPhotoName(file.name)
+    setError('')
+    setUploadingPhoto(true)
+
+    const token = session?.token
+    if (token) {
+      const { uploadImageApi } = await import('@/lib/api')
+      const res = await uploadImageApi(token, file)
+      if (res.success && res.data?.url) {
+        setPhotoUrl(res.data.url)
+      } else {
+        setError('Failed to upload vehicle photo to S3.')
+      }
+    }
+    setUploadingPhoto(false)
+  }
+
   async function submitShift(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const rawNum = odometer.replace(/[^\d.]/g, '')
@@ -150,7 +172,7 @@ export function ShiftForm({
     }
 
     try {
-      const payload = { odometer: rawNum, fuel, condition, notes }
+      const payload = { odometer: rawNum, fuel, condition, notes, photoUrl }
       const res = isStart ? await startShiftApi(token, payload) : await endShiftApi(token, payload)
       if (res.success) {
         onSuccess?.()
@@ -234,24 +256,33 @@ export function ShiftForm({
                 ref={fileInputRef}
                 id={uploadId}
                 type="file"
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                onChange={(event) =>
-                  setPhotoName(event.target.files?.[0]?.name ?? '')
-                }
+                onChange={handleFileChange}
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand-soft bg-card px-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                disabled={uploadingPhoto}
+                className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand-soft bg-card px-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-70"
               >
-                {photoName ? (
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="size-8 animate-spin text-blue-600" />
+                    <span className="mt-3 text-sm font-semibold text-blue-600">
+                      Uploading photo to S3...
+                    </span>
+                  </>
+                ) : photoName ? (
                   <>
                     <Check className="size-8 text-emerald-600" />
-                    <span className="mt-3 max-w-full truncate text-sm font-semibold text-foreground">
+                    <span className="mt-2 max-w-full truncate text-sm font-semibold text-foreground">
                       {photoName}
                     </span>
-                    <span className="mt-1 text-xs text-muted-foreground">
+                    <span className="mt-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-700">
+                      S3 Uploaded ✓
+                    </span>
+                    <span className="mt-1 text-[0.7rem] text-muted-foreground">
                       Click to replace
                     </span>
                   </>
@@ -262,7 +293,7 @@ export function ShiftForm({
                       Take Photo or Upload
                     </span>
                     <span className="mt-1 text-xs text-muted-foreground">
-                      JPG, PNG up to 5MB
+                      JPG, PNG up to 10MB
                     </span>
                   </>
                 )}
