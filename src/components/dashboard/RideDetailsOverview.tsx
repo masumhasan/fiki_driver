@@ -88,7 +88,19 @@ function DetailGrid({
             {detail.label}
           </dt>
           <dd className="mt-1 text-xs font-semibold leading-5 text-foreground">
-            {detail.value}
+            {detail.label === "Phone number" &&
+            detail.value &&
+            detail.value !== "—" ? (
+              <a
+                href={`tel:${detail.value.replace(/[^\d+]/g, "")}`}
+                className="inline-flex items-center gap-1.5 text-primary transition-colors hover:text-foreground"
+              >
+                <Phone aria-hidden="true" className="size-3.5 text-primary" />
+                <span>{detail.value}</span>
+              </a>
+            ) : (
+              detail.value
+            )}
           </dd>
         </div>
       ))}
@@ -98,7 +110,8 @@ function DetailGrid({
 
 function LocationCard({
   address,
-  contact,
+  contactName,
+  contactPhone,
   contactLabel,
   instructions,
   title,
@@ -109,7 +122,8 @@ function LocationCard({
 }: {
   address: string;
   city?: string;
-  contact: string;
+  contactName: string;
+  contactPhone: string;
   contactLabel: string;
   facility?: string;
   instructions?: string;
@@ -165,9 +179,21 @@ function LocationCard({
           <p className="text-[0.68rem] font-medium text-muted-foreground">
             {contactLabel}
           </p>
-          <p className="mt-1 text-xs font-semibold text-foreground">
-            {contact}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-foreground">
+            <span className="font-semibold">{contactName}</span>
+            {contactName && contactPhone && <span>·</span>}
+            {contactPhone ? (
+              <a
+                href={`tel:${contactPhone.replace(/[^\d+]/g, "")}`}
+                className="inline-flex items-center gap-1.5 text-primary transition-colors hover:text-foreground"
+              >
+                <Phone aria-hidden="true" className="size-3.5" />
+                <span>{contactPhone}</span>
+              </a>
+            ) : (
+              <span>—</span>
+            )}
+          </div>
         </div>
         {actionText && (
           <button
@@ -188,7 +214,11 @@ function formatStepTime(dateVal?: string | Date): string | null {
   if (!dateVal) return null;
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function TripStatusPanel({
@@ -204,11 +234,17 @@ function TripStatusPanel({
 }) {
   const getStepStates = (currentStatus: string, tripObj: any) => {
     const createdTime = formatStepTime(tripObj?.createdAt) || "9:40 AM";
-    const assignedTime = formatStepTime(tripObj?.assignedAt || tripObj?.createdAt) || createdTime;
-    const acceptedTime = formatStepTime(tripObj?.acceptedAt || tripObj?.assignedAt || tripObj?.createdAt) || assignedTime;
+    const assignedTime =
+      formatStepTime(tripObj?.assignedAt || tripObj?.createdAt) || createdTime;
+    const acceptedTime =
+      formatStepTime(
+        tripObj?.acceptedAt || tripObj?.assignedAt || tripObj?.createdAt,
+      ) || assignedTime;
     const arrivingTime = formatStepTime(tripObj?.arrivingAt);
     const arrivedTime = formatStepTime(tripObj?.arrivedAt);
-    const inProgressTime = formatStepTime(tripObj?.inProgressAt || tripObj?.startedAt);
+    const inProgressTime = formatStepTime(
+      tripObj?.inProgressAt || tripObj?.startedAt,
+    );
     const completedTime = formatStepTime(tripObj?.completedAt);
 
     switch (currentStatus) {
@@ -216,7 +252,11 @@ function TripStatusPanel({
         return [
           { label: "Assigned", state: "complete", time: assignedTime },
           { label: "Accepted", state: "complete", time: acceptedTime },
-          { label: "Heading to pickup", state: "current", time: arrivingTime || acceptedTime },
+          {
+            label: "Heading to pickup",
+            state: "current",
+            time: arrivingTime || acceptedTime,
+          },
           { label: "Passenger picked up", state: "upcoming", time: null },
           { label: "Heading to destination", state: "upcoming", time: null },
           { label: "Trip completed", state: "upcoming", time: null },
@@ -225,8 +265,16 @@ function TripStatusPanel({
         return [
           { label: "Assigned", state: "complete", time: assignedTime },
           { label: "Accepted", state: "complete", time: acceptedTime },
-          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
-          { label: "Passenger picked up", state: "current", time: arrivedTime || arrivingTime },
+          {
+            label: "Heading to pickup",
+            state: "complete",
+            time: arrivingTime || acceptedTime,
+          },
+          {
+            label: "Passenger picked up",
+            state: "current",
+            time: arrivedTime || arrivingTime,
+          },
           { label: "Heading to destination", state: "upcoming", time: null },
           { label: "Trip completed", state: "upcoming", time: null },
         ];
@@ -234,28 +282,68 @@ function TripStatusPanel({
         return [
           { label: "Assigned", state: "complete", time: assignedTime },
           { label: "Accepted", state: "complete", time: acceptedTime },
-          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
-          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
-          { label: "Heading to destination", state: "current", time: inProgressTime || arrivedTime },
+          {
+            label: "Heading to pickup",
+            state: "complete",
+            time: arrivingTime || acceptedTime,
+          },
+          {
+            label: "Passenger picked up",
+            state: "complete",
+            time: arrivedTime || arrivingTime,
+          },
+          {
+            label: "Heading to destination",
+            state: "current",
+            time: inProgressTime || arrivedTime,
+          },
           { label: "Trip completed", state: "upcoming", time: null },
         ];
       case "IN_PROGRESS":
         return [
           { label: "Assigned", state: "complete", time: assignedTime },
           { label: "Accepted", state: "complete", time: acceptedTime },
-          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
-          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
-          { label: "Heading to destination", state: "current", time: inProgressTime || arrivedTime },
+          {
+            label: "Heading to pickup",
+            state: "complete",
+            time: arrivingTime || acceptedTime,
+          },
+          {
+            label: "Passenger picked up",
+            state: "complete",
+            time: arrivedTime || arrivingTime,
+          },
+          {
+            label: "Heading to destination",
+            state: "current",
+            time: inProgressTime || arrivedTime,
+          },
           { label: "Trip completed", state: "upcoming", time: null },
         ];
       case "COMPLETED":
         return [
           { label: "Assigned", state: "complete", time: assignedTime },
           { label: "Accepted", state: "complete", time: acceptedTime },
-          { label: "Heading to pickup", state: "complete", time: arrivingTime || acceptedTime },
-          { label: "Passenger picked up", state: "complete", time: arrivedTime || arrivingTime },
-          { label: "Heading to destination", state: "complete", time: inProgressTime || arrivedTime },
-          { label: "Trip completed", state: "complete", time: completedTime || inProgressTime },
+          {
+            label: "Heading to pickup",
+            state: "complete",
+            time: arrivingTime || acceptedTime,
+          },
+          {
+            label: "Passenger picked up",
+            state: "complete",
+            time: arrivedTime || arrivingTime,
+          },
+          {
+            label: "Heading to destination",
+            state: "complete",
+            time: inProgressTime || arrivedTime,
+          },
+          {
+            label: "Trip completed",
+            state: "complete",
+            time: completedTime || inProgressTime,
+          },
         ];
       default:
         return [
@@ -442,7 +530,13 @@ function DriverNotes({
   );
 }
 
-function SignaturePad({ value, onChange }: { value?: string; onChange?: (val: string) => void }) {
+function SignaturePad({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -460,7 +554,11 @@ function SignaturePad({ value, onChange }: { value?: string; onChange?: (val: st
     ctx.lineCap = "round";
   }, []);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const startDrawing = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -468,13 +566,17 @@ function SignaturePad({ value, onChange }: { value?: string; onChange?: (val: st
 
     ctx.beginPath();
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     ctx.moveTo(clientX - rect.left, clientY - rect.top);
     setIsDrawing(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const draw = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -482,8 +584,8 @@ function SignaturePad({ value, onChange }: { value?: string; onChange?: (val: st
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     ctx.lineTo(clientX - rect.left, clientY - rect.top);
     ctx.stroke();
   };
@@ -536,7 +638,11 @@ function HandToHandSignatureModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: { receiverName: string; receiverRelationship: string; receiverSignature: string }) => void;
+  onConfirm: (data: {
+    receiverName: string;
+    receiverRelationship: string;
+    receiverSignature: string;
+  }) => void;
 }) {
   const [receiverName, setReceiverName] = useState("");
   const [receiverRelationship, setReceiverRelationship] = useState("");
@@ -558,7 +664,8 @@ function HandToHandSignatureModal({
     setError("");
     onConfirm({
       receiverName: receiverName.trim(),
-      receiverRelationship: receiverRelationship.trim() || "Assigned Representative",
+      receiverRelationship:
+        receiverRelationship.trim() || "Assigned Representative",
       receiverSignature: signature,
     });
   };
@@ -569,7 +676,9 @@ function HandToHandSignatureModal({
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2 text-primary">
             <FileCheck2 className="size-5" />
-            <h3 className="text-base font-bold text-foreground">Hand to Hand Verification</h3>
+            <h3 className="text-base font-bold text-foreground">
+              Hand to Hand Verification
+            </h3>
           </div>
           <button
             type="button"
@@ -582,7 +691,9 @@ function HandToHandSignatureModal({
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <p className="text-xs text-muted-foreground">
-            This trip requires Hand to Hand drop-off verification. Please capture the assigned receiver's details and digital signature to complete the trip.
+            This trip requires Hand to Hand drop-off verification. Please
+            capture the assigned receiver's details and digital signature to
+            complete the trip.
           </p>
 
           {error && (
@@ -592,7 +703,9 @@ function HandToHandSignatureModal({
           )}
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Full Name *</label>
+            <label className="mb-1 block text-xs font-bold text-foreground">
+              Receiver Full Name *
+            </label>
             <input
               type="text"
               required
@@ -604,7 +717,9 @@ function HandToHandSignatureModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Relationship / Role (Optional)</label>
+            <label className="mb-1 block text-xs font-bold text-foreground">
+              Receiver Relationship / Role (Optional)
+            </label>
             <input
               type="text"
               placeholder="e.g. Nurse, Guardian, Staff, Family Member"
@@ -615,9 +730,13 @@ function HandToHandSignatureModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-foreground">Receiver Digital Signature *</label>
+            <label className="mb-1 block text-xs font-bold text-foreground">
+              Receiver Digital Signature *
+            </label>
             <SignaturePad value={signature} onChange={setSignature} />
-            <p className="mt-1 text-[11px] text-muted-foreground">Sign above using finger or mouse.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Sign above using finger or mouse.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 border-t border-border pt-4">
@@ -679,7 +798,12 @@ export function RideDetailsOverview() {
       }
 
       const res = await getDriverTripsApi(token);
-      if (res.success && res.data && Array.isArray(res.data.trips) && res.data.trips.length > 0) {
+      if (
+        res.success &&
+        res.data &&
+        Array.isArray(res.data.trips) &&
+        res.data.trips.length > 0
+      ) {
         setTrip(res.data.trips[0]);
       }
     } catch {
@@ -695,8 +819,11 @@ export function RideDetailsOverview() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!trip) return;
-    const isHandToHand = Array.isArray(trip.mobilityOptions) &&
-      trip.mobilityOptions.some((opt: string) => opt.toLowerCase().includes("hand"));
+    const isHandToHand =
+      Array.isArray(trip.mobilityOptions) &&
+      trip.mobilityOptions.some((opt: string) =>
+        opt.toLowerCase().includes("hand"),
+      );
 
     if (newStatus === "COMPLETED" && isHandToHand && !trip.receiverSignature) {
       setShowSignatureModal(true);
@@ -714,12 +841,21 @@ export function RideDetailsOverview() {
     }
   };
 
-  const handleConfirmHandToHand = async (data: { receiverName: string; receiverRelationship: string; receiverSignature: string }) => {
+  const handleConfirmHandToHand = async (data: {
+    receiverName: string;
+    receiverRelationship: string;
+    receiverSignature: string;
+  }) => {
     if (!trip) return;
     const session = getDriverSession();
     const token = session?.token;
     if (!token) return;
-    const res = await updateDriverTripStatusApi(token, trip._id, "COMPLETED", data);
+    const res = await updateDriverTripStatusApi(
+      token,
+      trip._id,
+      "COMPLETED",
+      data,
+    );
     if (res.success) {
       setShowSignatureModal(false);
       fetchTrip();
@@ -728,7 +864,6 @@ export function RideDetailsOverview() {
       setShowShiftAlert(true);
     }
   };
-
 
   const handleSaveNotes = async (newNotes: string) => {
     if (!trip) return;
@@ -739,101 +874,101 @@ export function RideDetailsOverview() {
     fetchTrip();
   };
 
-function RideDetailsSkeleton() {
-  return (
-    <section className="mx-auto w-full max-w-6xl space-y-5 animate-pulse">
-      {/* Top Bar Skeleton */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-20 rounded-xl bg-muted" />
-          <div className="h-5 w-px bg-border hidden sm:block" />
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-24 rounded bg-muted" />
-            <div className="h-6 w-20 rounded-full bg-muted" />
+  function RideDetailsSkeleton() {
+    return (
+      <section className="mx-auto w-full max-w-6xl space-y-5 animate-pulse">
+        {/* Top Bar Skeleton */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-20 rounded-xl bg-muted" />
+            <div className="h-5 w-px bg-border hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-24 rounded bg-muted" />
+              <div className="h-6 w-20 rounded-full bg-muted" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-28 rounded-xl bg-muted" />
+            <div className="h-9 w-32 rounded-xl bg-muted" />
           </div>
         </div>
-        <div className="flex gap-2">
-          <div className="h-9 w-28 rounded-xl bg-muted" />
-          <div className="h-9 w-32 rounded-xl bg-muted" />
-        </div>
-      </div>
 
-      {/* Main Trip Card Skeleton */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between gap-5">
-          <div className="flex items-center gap-3.5">
-            <div className="size-12 rounded-2xl bg-muted shrink-0" />
-            <div className="space-y-2">
-              <div className="h-5 w-40 rounded bg-muted" />
-              <div className="h-3 w-28 rounded bg-muted" />
-              <div className="flex gap-2 pt-1">
-                <div className="h-5 w-20 rounded-full bg-muted" />
-                <div className="h-5 w-16 rounded-full bg-muted" />
+        {/* Main Trip Card Skeleton */}
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between gap-5">
+            <div className="flex items-center gap-3.5">
+              <div className="size-12 rounded-2xl bg-muted shrink-0" />
+              <div className="space-y-2">
+                <div className="h-5 w-40 rounded bg-muted" />
+                <div className="h-3 w-28 rounded bg-muted" />
+                <div className="flex gap-2 pt-1">
+                  <div className="h-5 w-20 rounded-full bg-muted" />
+                  <div className="h-5 w-16 rounded-full bg-muted" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-6 sm:border-l sm:border-border sm:pl-8">
+              <div className="space-y-1 text-right">
+                <div className="h-3 w-10 rounded bg-muted ml-auto" />
+                <div className="h-4 w-20 rounded bg-muted ml-auto" />
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="h-3 w-10 rounded bg-muted ml-auto" />
+                <div className="h-4 w-16 rounded bg-muted ml-auto" />
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="h-3 w-10 rounded bg-muted ml-auto" />
+                <div className="h-4 w-16 rounded bg-muted ml-auto" />
               </div>
             </div>
           </div>
-          <div className="flex gap-6 sm:border-l sm:border-border sm:pl-8">
-            <div className="space-y-1 text-right">
-              <div className="h-3 w-10 rounded bg-muted ml-auto" />
-              <div className="h-4 w-20 rounded bg-muted ml-auto" />
+        </div>
+
+        {/* Grid 2 Column Layout Skeleton */}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="h-4 w-28 rounded bg-muted" />
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-16 rounded-xl bg-muted/60" />
+                ))}
+              </div>
             </div>
-            <div className="space-y-1 text-right">
-              <div className="h-3 w-10 rounded bg-muted ml-auto" />
-              <div className="h-4 w-16 rounded bg-muted ml-auto" />
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="h-4 w-36 rounded bg-muted" />
+              <div className="h-12 rounded-xl bg-muted/40" />
             </div>
-            <div className="space-y-1 text-right">
-              <div className="h-3 w-10 rounded bg-muted ml-auto" />
-              <div className="h-4 w-16 rounded bg-muted ml-auto" />
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="h-4 w-36 rounded bg-muted" />
+              <div className="h-12 rounded-xl bg-muted/40" />
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="h-4 w-40 rounded bg-muted" />
+              <div className="grid grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="h-3 w-16 rounded bg-muted" />
+                    <div className="h-4 w-24 rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="h-4 w-28 rounded bg-muted" />
+              <div className="h-24 rounded-xl bg-muted/40" />
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Grid 2 Column Layout Skeleton */}
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <div className="h-4 w-28 rounded bg-muted" />
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-16 rounded-xl bg-muted/60" />
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="h-4 w-36 rounded bg-muted" />
-            <div className="h-12 rounded-xl bg-muted/40" />
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="h-4 w-36 rounded bg-muted" />
-            <div className="h-12 rounded-xl bg-muted/40" />
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <div className="h-4 w-40 rounded bg-muted" />
-            <div className="grid grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="space-y-1">
-                  <div className="h-3 w-16 rounded bg-muted" />
-                  <div className="h-4 w-24 rounded bg-muted" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="h-4 w-28 rounded bg-muted" />
-            <div className="h-24 rounded-xl bg-muted/40" />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+      </section>
+    );
+  }
 
   if (loading) {
     return <RideDetailsSkeleton />;
@@ -850,8 +985,12 @@ function RideDetailsSkeleton() {
     return (
       <section className="mx-auto w-full max-w-6xl p-10 text-center">
         <div className="rounded-2xl border border-border bg-card p-10 shadow-sm">
-          <p className="text-base font-bold text-foreground">No Ride Details Available</p>
-          <p className="mt-1 text-xs text-muted-foreground">You currently have no active or scheduled rides assigned.</p>
+          <p className="text-base font-bold text-foreground">
+            No Ride Details Available
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            You currently have no active or scheduled rides assigned.
+          </p>
           <Link
             href="/dashboard"
             className="mt-6 inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground"
@@ -867,22 +1006,44 @@ function RideDetailsSkeleton() {
   const tripDisplayId = `TRP-${trip._id.substring(trip._id.length - 4).toUpperCase()}`;
   const passengerName = trip.fullName || trip.passengerId?.name || "Passenger";
   const passengerPhone = trip.phoneNumber || trip.passengerId?.phone || "";
-  const cleanPassengerPhone = passengerPhone ? passengerPhone.replace(/[^\d+]/g, "") : "";
-  const passengerInitials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+  const cleanPassengerPhone = passengerPhone
+    ? passengerPhone.replace(/[^\d+]/g, "")
+    : "";
+  const passengerInitials =
+    passengerName
+      .split(" ")
+      .filter(Boolean)
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2) || "PA";
 
-
-
-  const mobilityType = Array.isArray(trip.mobilityOptions) && trip.mobilityOptions.length > 0
-    ? trip.mobilityOptions.join(", ")
-    : "Wheelchair";
+  const mobilityType =
+    Array.isArray(trip.mobilityOptions) && trip.mobilityOptions.length > 0
+      ? trip.mobilityOptions.join(", ")
+      : "Wheelchair";
   const tripType = trip.tripType || "One way";
 
-  const pickupAddress = trip.pickupLocation?.address || trip.streetAddress || "1204 NW 14th Ave, Miami, FL";
-  const dropoffAddress = trip.dropoffLocation?.address || trip.returnDestinationAddress || "1611 NW 12th Ave, Miami, FL";
+  const pickupAddress =
+    trip.pickupLocation?.address ||
+    trip.streetAddress ||
+    "1204 NW 14th Ave, Miami, FL";
+  const dropoffAddress =
+    trip.dropoffLocation?.address ||
+    trip.returnDestinationAddress ||
+    "1611 NW 12th Ave, Miami, FL";
 
   const pickupDateStr = trip.pickupDate
-    ? new Date(trip.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : new Date(trip.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    ? new Date(trip.pickupDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : new Date(trip.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
   const pickupTimeStr = trip.pickupTime || "8:00 AM";
   const dropoffTimeStr = trip.appointmentTime || "8:45 AM";
 
@@ -929,7 +1090,10 @@ function RideDetailsSkeleton() {
     { label: "Full name", value: passengerName },
     { label: "Phone number", value: passengerPhone },
     { label: "Mobility type", value: mobilityType },
-    { label: "Additional attendant", value: trip.additionalAttendant ? "Yes" : "No" },
+    {
+      label: "Additional attendant",
+      value: trip.additionalAttendant ? "Yes" : "No",
+    },
   ];
 
   const tripDetailsList: DetailItem[] = [
@@ -1051,9 +1215,15 @@ function RideDetailsSkeleton() {
           type="pickup"
           title="Pickup information"
           address={pickupAddress}
-          instructions={trip.driverNotes || trip.specialInstructions || trip.accessInformation || "Call upon arrival. Use the main entrance on the west side."}
+          instructions={
+            trip.driverNotes ||
+            trip.specialInstructions ||
+            trip.accessInformation ||
+            "Call upon arrival. Use the main entrance on the west side."
+          }
           contactLabel="Pickup contact"
-          contact={`Front Desk · ${passengerPhone}`}
+          contactName="Front Desk"
+          contactPhone={passengerPhone}
           actionText={pickupActionText}
           onAction={() => handleStatusChange(pickupActionNext)}
         />
@@ -1062,7 +1232,12 @@ function RideDetailsSkeleton() {
           title="Drop-off information"
           address={dropoffAddress}
           contactLabel="Destination contact"
-          contact={trip.emergencyContactPhone ? `${trip.emergencyContactName || "Admissions"} · ${trip.emergencyContactPhone}` : "Admissions · (305) 555-0140"}
+          contactName={
+            trip.emergencyContactPhone
+              ? trip.emergencyContactName || "Admissions"
+              : "Admissions"
+          }
+          contactPhone={trip.emergencyContactPhone || "(305) 555-0140"}
           actionText={dropoffActionText}
           onAction={() => handleStatusChange(dropoffActionNext)}
         />
@@ -1090,9 +1265,21 @@ function RideDetailsSkeleton() {
                     Emergency contact
                   </p>
                 </div>
-                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                  {trip.emergencyContactName ? `${trip.emergencyContactName} · ${trip.emergencyContactPhone}` : "Linda Johnson · (305) 555-0198"}
-                </p>
+                <div className="mt-1.5 text-xs leading-5 text-muted-foreground flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold text-foreground">
+                    {trip.emergencyContactName || "Linda Johnson"}
+                  </span>
+                  <span>·</span>
+                  <a
+                    href={`tel:${(trip.emergencyContactPhone || "(305) 555-0198").replace(/[^\d+]/g, "")}`}
+                    className="inline-flex items-center gap-1.5 text-primary transition-colors hover:text-foreground"
+                  >
+                    <Phone aria-hidden="true" className="size-3.5" />
+                    <span>
+                      {trip.emergencyContactPhone || "(305) 555-0198"}
+                    </span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -1119,7 +1306,9 @@ function RideDetailsSkeleton() {
         <TripStatusPanel
           status={trip.status}
           trip={trip}
-          onNextStatus={() => nextStatusVal && handleStatusChange(nextStatusVal)}
+          onNextStatus={() =>
+            nextStatusVal && handleStatusChange(nextStatusVal)
+          }
           nextActionText={nextStatusText}
         />
       </div>
@@ -1144,4 +1333,3 @@ function RideDetailsSkeleton() {
     </section>
   );
 }
-
