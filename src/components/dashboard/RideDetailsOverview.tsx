@@ -37,6 +37,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+function formatTimeTo12Hour(timeStr?: string): string {
+  if (!timeStr) return "";
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return timeStr;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
 type DetailItem = {
   label: string;
   value: string;
@@ -1044,8 +1056,8 @@ export function RideDetailsOverview() {
         day: "numeric",
         year: "numeric",
       });
-  const pickupTimeStr = trip.pickupTime || "8:00 AM";
-  const dropoffTimeStr = trip.appointmentTime || "8:45 AM";
+  const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "8:00 AM";
+  const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : "8:45 AM";
 
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupAddress)}&destination=${encodeURIComponent(dropoffAddress)}`;
 

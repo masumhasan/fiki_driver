@@ -25,7 +25,17 @@ import Link from "next/link";
 import { ShiftAlertModal } from "./ShiftAlertModal";
 import { cn } from "@/lib/utils";
 
-
+function formatTimeTo12Hour(timeStr?: string): string {
+  if (!timeStr) return "";
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return timeStr;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
 
 type SummaryTone = "primary" | "secondary" | "success";
 type TripStatus = "inProgress" | "scheduled" | "completed";
@@ -344,11 +354,11 @@ function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
   }, [todayShift]);
 
   const clockInDisplay = todayShift?.startedAt
-    ? new Date(todayShift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(todayShift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
     : "—";
 
   const clockOutDisplay = todayShift?.status === "COMPLETED" && todayShift?.endedAt
-    ? new Date(todayShift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(todayShift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
     : "—";
 
   const todayScheduleDisplay = todayShift?.todayScheduleHours || "8:00 AM – 4:00 PM";
@@ -657,7 +667,11 @@ export function DashboardOverview() {
                     ? new Date(t.endDate || t.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
                     : formattedStartDate;
 
-                  const outboundPickupTime = t.pickupTime || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled");
+                  const outboundPickupTime = t.pickupTime
+                    ? formatTimeTo12Hour(t.pickupTime)
+                    : (t.createdAt
+                        ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
+                        : "Scheduled");
 
                   // Outbound Leg
                   mappedList.push({
@@ -684,7 +698,7 @@ export function DashboardOverview() {
                       rawId: t._id,
                       status: uiStatus,
                       rideType: "Round Trip (Return)",
-                      time: t.returnPickupTime || "Return Pickup",
+                      time: t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup",
                       date: formattedEndDate,
                       passenger: passengerName,
                       initials,
