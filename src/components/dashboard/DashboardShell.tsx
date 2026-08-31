@@ -19,7 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { clearDriverSession, getDriverSession, getInitials, formatVehicleLine, type DriverSession } from "@/lib/auth";
+import { clearDriverSession, getDriverSession, updateDriverSession, getInitials, formatVehicleLine, type DriverSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { EditProfileModal } from "./EditProfileModal";
 
@@ -233,9 +233,38 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const isSchedulePage = pathname === "/schedule-attendance";
   const isEarningsPage = pathname === "/earnings";
 
-  // Load real session on mount
+  // Load real session on mount & sync latest driver profile & avatarUrl from backend
   useEffect(() => {
-    setSession(getDriverSession());
+    const current = getDriverSession();
+    setSession(current);
+
+    const token = current?.token;
+    if (token) {
+      import("@/lib/api").then(({ getDriverProfileApi }) => {
+        getDriverProfileApi(token).then((res) => {
+          if (res.success && res.data) {
+            const userObj = res.data.user;
+            const profileObj = res.data.profile;
+            const remoteAvatarUrl = userObj?.avatarUrl || profileObj?.avatarUrl || "";
+            const remoteName = userObj?.name;
+            const remotePhone = userObj?.phone;
+            const remoteLicenseNumber = profileObj?.licenseNumber;
+            const remoteLicenseExpirationDate = profileObj?.licenseExpirationDate;
+
+            const updated = updateDriverSession({
+              ...(remoteAvatarUrl ? { avatarUrl: remoteAvatarUrl } : {}),
+              ...(remoteName ? { name: remoteName } : {}),
+              ...(remotePhone ? { phone: remotePhone } : {}),
+              ...(remoteLicenseNumber ? { licenseNumber: remoteLicenseNumber } : {}),
+              ...(remoteLicenseExpirationDate ? { licenseExpirationDate: remoteLicenseExpirationDate } : {}),
+            });
+            if (updated) {
+              setSession(updated);
+            }
+          }
+        });
+      });
+    }
   }, []);
 
   const driverFirstName = session?.name?.split(" ")[0] ?? "Driver";
