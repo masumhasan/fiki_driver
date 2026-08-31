@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  AlertCircle,
   ArrowRight,
   CheckCircle2,
   Clock3,
+  LockKeyhole,
   Pause,
   Play,
   Square,
@@ -14,6 +16,15 @@ import { ShiftForm } from "@/components/dashboard/ShiftForm";
 import { getDriverSession } from "@/lib/auth";
 import { getScheduleSummaryApi, getTodayShiftApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+interface ScheduleCheck {
+  isWorkingDay: boolean;
+  startTime: string;
+  endTime: string;
+  allowStart: boolean;
+  reason: string;
+  isOneTimeOverride: boolean;
+}
 
 function Card({
   children,
@@ -97,6 +108,7 @@ function ScheduleSkeleton() {
 export function ScheduleAttendance() {
   const [shiftModal, setShiftModal] = useState<"start" | "end" | null>(null);
   const [shift, setShift] = useState<any>(null);
+  const [scheduleCheck, setScheduleCheck] = useState<ScheduleCheck | null>(null);
   const [summaryData, setSummaryData] = useState<{
     tripSummary: { totalTrips: number; completed: number; inProgress: number; remaining: number };
     upcomingSchedule: Array<{ day: string; date: string; hours: string; status: string }>;
@@ -126,6 +138,9 @@ export function ScheduleAttendance() {
       if (res.success && res.data) {
         setShift(res.data.todayShift);
         setSummaryData(res.data);
+        if (res.data.todayScheduleCheck) {
+          setScheduleCheck(res.data.todayScheduleCheck as ScheduleCheck);
+        }
       }
     } catch {
       // fallback
@@ -288,6 +303,36 @@ export function ScheduleAttendance() {
               </div>
             )}
           </div>
+          {/* ── Schedule enforcement banner ── */}
+          {scheduleCheck && !scheduleCheck.allowStart && !isInProgress && (
+            <div className={cn(
+              "mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 text-xs leading-5",
+              !scheduleCheck.isWorkingDay
+                ? "border-slate-200 bg-slate-50 text-slate-700"
+                : "border-amber-300 bg-amber-50 text-amber-800",
+            )}>
+              <AlertCircle className={cn(
+                "mt-0.5 size-4 shrink-0",
+                !scheduleCheck.isWorkingDay ? "text-slate-500" : "text-amber-600",
+              )} />
+              <div>
+                <p className="font-semibold">
+                  {!scheduleCheck.isWorkingDay
+                    ? scheduleCheck.isOneTimeOverride
+                      ? "Emergency Override: Day Off"
+                      : "Scheduled Day Off"
+                    : "Outside Shift Window"}
+                </p>
+                <p className="mt-0.5 text-muted-foreground">{scheduleCheck.reason}</p>
+                {scheduleCheck.isWorkingDay && (
+                  <p className="mt-1 font-medium">
+                    Your window: {scheduleCheck.startTime} – {scheduleCheck.endTime}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 grid grid-cols-3 gap-3">
             {isInProgress ? (
               <button
@@ -303,24 +348,42 @@ export function ScheduleAttendance() {
             ) : (
               <button
                 type="button"
-                onClick={() => setShiftModal("start")}
-                disabled={isCompleted}
+                onClick={() => {
+                  // Block start if schedule not allowed
+                  if (scheduleCheck && !scheduleCheck.allowStart) return;
+                  setShiftModal("start");
+                }}
+                disabled={isCompleted || (scheduleCheck !== null && !scheduleCheck.allowStart)}
+                title={scheduleCheck && !scheduleCheck.allowStart ? scheduleCheck.reason : undefined}
                 className={cn(
                   "flex min-h-28 flex-col items-center justify-center rounded-xl p-3 text-center text-xs font-bold transition-colors",
                   isCompleted
                     ? "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
-                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+                    : scheduleCheck && !scheduleCheck.allowStart
+                      ? "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
+                      : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
                 )}
               >
                 <span
                   className={cn(
                     "grid size-12 place-items-center rounded-xl text-white",
-                    isCompleted ? "bg-muted-foreground" : "bg-emerald-500",
+                    isCompleted || (scheduleCheck && !scheduleCheck.allowStart)
+                      ? "bg-muted-foreground"
+                      : "bg-emerald-500",
                   )}
                 >
-                  <Play className="size-5 fill-current" />
+                  {scheduleCheck && !scheduleCheck.allowStart && !isCompleted
+                    ? <LockKeyhole className="size-5" />
+                    : <Play className="size-5 fill-current" />
+                  }
                 </span>
-                <span className="mt-3">{isCompleted ? "SHIFT COMPLETED" : "START SHIFT"}</span>
+                <span className="mt-3">
+                  {isCompleted
+                    ? "SHIFT COMPLETED"
+                    : scheduleCheck && !scheduleCheck.allowStart
+                      ? !scheduleCheck.isWorkingDay ? "DAY OFF" : "LOCKED"
+                      : "START SHIFT"}
+                </span>
               </button>
             )}
 
@@ -350,7 +413,9 @@ export function ScheduleAttendance() {
               <span className="grid size-12 place-items-center rounded-xl bg-brand-soft/50">
                 <Clock3 className="size-5" />
               </span>
-              <span className="mt-3">SHIFT STATUS</span>
+              <span className="mt-3">
+                {isInProgress ? "IN PROGRESS" : isCompleted ? "COMPLETED" : "SHIFT STATUS"}
+              </span>
             </div>
           </div>
           <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-700">
