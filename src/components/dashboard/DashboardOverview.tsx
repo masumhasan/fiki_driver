@@ -63,6 +63,38 @@ type Trip = {
   mapsUrl: string;
 };
 
+function formatFullCardDate(dateVal?: string | Date) {
+  if (!dateVal) {
+    const d = new Date();
+    const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
+    const dayNum = d.getDate();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthName = monthNames[d.getMonth()];
+    const year = d.getFullYear();
+    return `${dayName} ${dayNum} ${monthName} ${year}`;
+  }
+
+  const rawStr = String(dateVal);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr.trim())) {
+    const [y, m, d] = rawStr.trim().split("-").map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d));
+    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthName = monthNames[m - 1];
+    return `${dayName} ${d} ${monthName} ${y}`;
+  }
+
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+
+  const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
+  const dayNum = d.getDate();
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthName = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+  return `${dayName} ${dayNum} ${monthName} ${year}`;
+}
+
 function SummaryCardSkeleton() {
   return (
     <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(8,37,82,0.04)] animate-pulse">
@@ -241,7 +273,7 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
                 {trip.rideType}
               </span>
               <span className="ml-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                {trip.date || "Aug 27"}
+                {formatFullCardDate(trip.date)}
               </span>
             </div>
 
@@ -665,13 +697,8 @@ export function DashboardOverview() {
                     if (!matchesDay) return;
                   }
 
-                  const formattedStartDate = (t.startDate || t.pickupDate)
-                    ? new Date(t.startDate || t.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                    : shortDate;
-
-                  const formattedEndDate = (t.endDate || t.returnDate)
-                    ? new Date(t.endDate || t.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                    : formattedStartDate;
+                  const formattedStartDate = formatFullCardDate(t.startDate || t.pickupDate || t.createdAt);
+                  const formattedEndDate = formatFullCardDate(t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt);
 
                   const outboundPickupTime = t.pickupTime
                     ? formatTimeTo12Hour(t.pickupTime)
