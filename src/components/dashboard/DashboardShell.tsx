@@ -28,6 +28,11 @@ const primaryNavigation = [
     icon: LayoutDashboard,
   },
   {
+    label: "Schedule & attendance",
+    href: "/schedule-attendance",
+    icon: CalendarDays,
+  },
+  {
     label: "Ride details",
     href: "/ride-details",
     icon: Route,
@@ -36,11 +41,6 @@ const primaryNavigation = [
     label: "My earnings",
     href: "/earnings",
     icon: Activity,
-  },
-  {
-    label: "Schedule & attendance",
-    href: "/schedule-attendance",
-    icon: CalendarDays,
   },
 ];
 
