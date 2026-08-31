@@ -63,22 +63,23 @@ type Trip = {
   mapsUrl: string;
 };
 
+const CENTRAL_TZ = "America/Chicago";
+
 function formatFullCardDate(dateVal?: string | Date) {
   if (!dateVal) {
     const d = new Date();
-    const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
-    const dayNum = d.getDate();
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthName = monthNames[d.getMonth()];
-    const year = d.getFullYear();
+    const dayName = d.toLocaleDateString("en-US", { weekday: "long", timeZone: CENTRAL_TZ });
+    const dayNum = new Intl.DateTimeFormat("en-US", { day: "numeric", timeZone: CENTRAL_TZ }).format(d);
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: CENTRAL_TZ }).format(d);
+    const year = new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: CENTRAL_TZ }).format(d);
     return `${dayName} ${dayNum} ${monthName} ${year}`;
   }
 
   const rawStr = String(dateVal);
   if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr.trim())) {
     const [y, m, d] = rawStr.trim().split("-").map(Number);
-    const dateObj = new Date(Date.UTC(y, m - 1, d));
-    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long", timeZone: CENTRAL_TZ });
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthName = monthNames[m - 1];
     return `${dayName} ${d} ${monthName} ${y}`;
@@ -87,11 +88,10 @@ function formatFullCardDate(dateVal?: string | Date) {
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return String(dateVal);
 
-  const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
-  const dayNum = d.getDate();
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const monthName = monthNames[d.getMonth()];
-  const year = d.getFullYear();
+  const dayName = d.toLocaleDateString("en-US", { weekday: "long", timeZone: CENTRAL_TZ });
+  const dayNum = new Intl.DateTimeFormat("en-US", { day: "numeric", timeZone: CENTRAL_TZ }).format(d);
+  const monthName = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: CENTRAL_TZ }).format(d);
+  const year = new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: CENTRAL_TZ }).format(d);
   return `${dayName} ${dayNum} ${monthName} ${year}`;
 }
 
@@ -146,10 +146,7 @@ function getTripTimestamp(dateVal?: string | Date, timeStr?: string): number {
 function isTripToday(dateVal?: string | Date): boolean {
   if (!dateVal) return false;
   const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const todayFormatted = formatFullCardDate(`${yyyy}-${mm}-${dd}`);
+  const todayFormatted = formatFullCardDate(now);
   const cardFormatted = formatFullCardDate(dateVal);
   return todayFormatted === cardFormatted;
 }
@@ -723,10 +720,12 @@ export function DashboardOverview() {
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone: "America/Chicago",
   }).format(today);
   const shortDate = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+    timeZone: "America/Chicago",
   }).format(today);
 
   const [liveTrips, setLiveTrips] = useState<any[]>([]);

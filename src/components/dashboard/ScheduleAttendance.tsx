@@ -289,6 +289,7 @@ export function ScheduleAttendance() {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
+                    timeZone: "America/Chicago",
                   })}
                 </span>
                 <span className="text-muted-foreground/40">•</span>
@@ -298,7 +299,8 @@ export function ScheduleAttendance() {
                     minute: "2-digit",
                     second: "2-digit",
                     hour12: true,
-                  })}
+                    timeZone: "America/Chicago",
+                  })} CT
                 </span>
               </div>
             )}
