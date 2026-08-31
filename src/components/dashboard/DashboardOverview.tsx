@@ -95,6 +95,65 @@ function formatFullCardDate(dateVal?: string | Date) {
   return `${dayName} ${dayNum} ${monthName} ${year}`;
 }
 
+function getTripTimestamp(dateVal?: string | Date, timeStr?: string): number {
+  if (!dateVal) return 0;
+
+  let year: number;
+  let month: number;
+  let day: number;
+
+  const rawStr = String(dateVal).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr)) {
+    const [y, m, d] = rawStr.split("-").map(Number);
+    year = y;
+    month = m - 1;
+    day = d;
+  } else {
+    const dObj = new Date(dateVal);
+    if (!isNaN(dObj.getTime())) {
+      year = dObj.getFullYear();
+      month = dObj.getMonth();
+      day = dObj.getDate();
+    } else {
+      const now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth();
+      day = now.getDate();
+    }
+  }
+
+  let hours = 8;
+  let minutes = 0;
+
+  if (timeStr) {
+    const trimmedTime = timeStr.trim();
+    const ampmMatch = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(trimmedTime);
+    if (ampmMatch) {
+      let h = parseInt(ampmMatch[1], 10);
+      const m = parseInt(ampmMatch[2], 10);
+      const period = ampmMatch[3] ? ampmMatch[3].toUpperCase() : null;
+      if (period === "PM" && h < 12) h += 12;
+      if (period === "AM" && h === 12) h = 0;
+      hours = h;
+      minutes = m;
+    }
+  }
+
+  return new Date(year, month, day, hours, minutes, 0, 0).getTime();
+}
+
+function isTripToday(dateVal?: string | Date): boolean {
+  if (!dateVal) return false;
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const todayFormatted = formatFullCardDate(`${yyyy}-${mm}-${dd}`);
+  const cardFormatted = formatFullCardDate(dateVal);
+  return todayFormatted === cardFormatted;
+}
+
 function SummaryCardSkeleton() {
   return (
     <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(8,37,82,0.04)] animate-pulse">
@@ -618,6 +677,8 @@ export function DashboardOverview() {
   const [shiftFuel, setShiftFuel] = useState<string | null>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
+  const [activeTab, setActiveTab] = useState<"upcoming" | "completed">("upcoming");
+  const [backendTodayTripsCount, setBackendTodayTripsCount] = useState<number | null>(null);
 
   const fetchTrips = () => {
     setLoading(true);
@@ -648,6 +709,10 @@ export function DashboardOverview() {
             }),
             getDriverTripsApi(token).then((res) => {
               if (res.success && res.data && Array.isArray(res.data.trips)) {
+                if (typeof res.data.todayTripsCount === "number") {
+                  setBackendTodayTripsCount(res.data.todayTripsCount);
+                }
+
                 const now = new Date();
                 const weekDaysFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
                 const weekDaysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -697,14 +762,19 @@ export function DashboardOverview() {
                     if (!matchesDay) return;
                   }
 
-                  const formattedStartDate = formatFullCardDate(t.startDate || t.pickupDate || t.createdAt);
-                  const formattedEndDate = formatFullCardDate(t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt);
+                  const rawOutboundDate = t.startDate || t.pickupDate || t.createdAt;
+                  const formattedStartDate = formatFullCardDate(rawOutboundDate);
+
+                  const rawReturnDate = t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt;
+                  const formattedEndDate = formatFullCardDate(rawReturnDate);
 
                   const outboundPickupTime = t.pickupTime
                     ? formatTimeTo12Hour(t.pickupTime)
                     : (t.createdAt
                         ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
                         : "Scheduled");
+
+                  const outboundTs = getTripTimestamp(rawOutboundDate, outboundPickupTime);
 
                   // Outbound Leg
                   mappedList.push({
@@ -714,6 +784,9 @@ export function DashboardOverview() {
                     rideType: isRecurring ? "Recurring Trip" : isRoundTrip ? "Round Trip (Outbound)" : (t.tripType || "One way"),
                     time: outboundPickupTime,
                     date: formattedStartDate,
+                    rawDate: rawOutboundDate,
+                    timestampMs: outboundTs,
+                    isToday: isTripToday(rawOutboundDate),
                     passenger: passengerName,
                     initials,
                     mobility,
@@ -726,13 +799,18 @@ export function DashboardOverview() {
 
                   // Return Leg for Round Trips
                   if (isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
+                    const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
+                    const returnTs = getTripTimestamp(rawReturnDate, returnTimeFormatted);
                     mappedList.push({
                       id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
                       rawId: t._id,
                       status: uiStatus,
                       rideType: "Round Trip (Return)",
-                      time: t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup",
+                      time: returnTimeFormatted,
                       date: formattedEndDate,
+                      rawDate: rawReturnDate,
+                      timestampMs: returnTs,
+                      isToday: isTripToday(rawReturnDate),
                       passenger: passengerName,
                       initials,
                       mobility,
@@ -787,16 +865,28 @@ export function DashboardOverview() {
     onStatusChange: handleStatusChange,
   }));
 
-  const totalTrips = liveTrips.length;
-  const completedCount = liveTrips.filter((t) => t.status === "completed").length;
-  const upcomingTrips = liveTrips.filter((t) => t.status !== "completed");
+  // Separate into Upcoming (sorted date & time ascending) and Completed (sorted date & time descending)
+  const upcomingTrips = activeTripList
+    .filter((t) => t.status !== "completed")
+    .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+
+  const completedTrips = activeTripList
+    .filter((t) => t.status === "completed")
+    .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+
   const upcomingCount = upcomingTrips.length;
+  const completedCount = completedTrips.length;
   const nextPickup = upcomingTrips.length > 0 ? upcomingTrips[0] : null;
+
+  const localTodayCount = liveTrips.filter((t) => t.isToday).length;
+  const todayTripsCount = backendTodayTripsCount !== null && backendTodayTripsCount > 0
+    ? backendTodayTripsCount
+    : localTodayCount;
 
   const dynamicSummaryItems: SummaryItem[] = [
     {
       label: "Today's trips",
-      value: String(totalTrips),
+      value: String(todayTripsCount),
       detail: "Daily schedule",
       icon: CalendarDays,
       tone: "primary",
@@ -804,7 +894,7 @@ export function DashboardOverview() {
     {
       label: "Completed",
       value: String(completedCount),
-      detail: totalTrips > 0 ? `${Math.round((completedCount / totalTrips) * 100)}% of schedule` : "0% of schedule",
+      detail: activeTripList.length > 0 ? `${Math.round((completedCount / activeTripList.length) * 100)}% of schedule` : "0% of schedule",
       icon: CheckCircle2,
       tone: "success",
     },
@@ -817,12 +907,14 @@ export function DashboardOverview() {
     },
     {
       label: "Total distance",
-      value: `${(totalTrips * 4.5).toFixed(1)} mi`,
-      detail: `Est. ${totalTrips * 15} min driving`,
+      value: `${((todayTripsCount > 0 ? todayTripsCount : activeTripList.length) * 4.5).toFixed(1)} mi`,
+      detail: `Est. ${(todayTripsCount > 0 ? todayTripsCount : activeTripList.length) * 15} min driving`,
       icon: Route,
       tone: "primary",
     },
   ];
+
+  const displayedList = activeTab === "upcoming" ? upcomingTrips : completedTrips;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -842,37 +934,77 @@ export function DashboardOverview() {
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <section aria-labelledby="schedule-title">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2
-                id="schedule-title"
-                className="text-base font-semibold text-foreground"
+          <div className="mb-4">
+            <h2
+              id="schedule-title"
+              className="text-base font-semibold text-foreground"
+            >
+              Trip Schedules
+            </h2>
+
+            {/* Horizontal Tabs for Upcoming Trips and Completed Trips */}
+            <div className="mt-3 flex items-center border-b border-border">
+              <button
+                type="button"
+                onClick={() => setActiveTab("upcoming")}
+                className={cn(
+                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  activeTab === "upcoming"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
               >
-                Trip Schedules
-              </h2>
+                Upcoming Trips ({upcomingCount})
+                {activeTab === "upcoming" && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("completed")}
+                className={cn(
+                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  activeTab === "completed"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Completed Trips ({completedCount})
+                {activeTab === "completed" && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
+                )}
+              </button>
             </div>
           </div>
 
           <div className="space-y-3">
             {loading ? (
               [1, 2].map((i) => <TripCardSkeleton key={i} />)
-            ) : activeTripList.length === 0 ? (
+            ) : displayedList.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[0_6px_20px_rgba(8,37,82,0.05)]">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <CalendarDays className="size-6" />
+                  {activeTab === "upcoming" ? (
+                    <CalendarDays className="size-6" />
+                  ) : (
+                    <CheckCircle2 className="size-6" />
+                  )}
                 </div>
-                <h3 className="mt-4 text-base font-bold text-foreground">No Trips Scheduled Today</h3>
+                <h3 className="mt-4 text-base font-bold text-foreground">
+                  {activeTab === "upcoming" ? "No Upcoming Trips" : "No Completed Trips"}
+                </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  You currently have no ride assignments scheduled for today. Check back later or contact dispatch.
+                  {activeTab === "upcoming"
+                    ? "You currently have no upcoming ride assignments."
+                    : "You have not completed any trips yet."}
                 </p>
               </div>
             ) : (
-              activeTripList.map((trip: any, index: number) => (
+              displayedList.map((trip: any, index: number) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}
                   index={index}
-                  isLastItem={index === activeTripList.length - 1}
+                  isLastItem={index === displayedList.length - 1}
                 />
               ))
             )}
