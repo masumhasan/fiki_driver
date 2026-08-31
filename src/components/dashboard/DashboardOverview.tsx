@@ -39,7 +39,7 @@ function formatTimeTo12Hour(timeStr?: string): string {
 }
 
 type SummaryTone = "primary" | "secondary" | "success";
-type TripStatus = "inProgress" | "scheduled" | "completed";
+type TripStatus = "inProgress" | "scheduled" | "completed" | "missed";
 
 type SummaryItem = {
   label: string;
@@ -211,6 +211,10 @@ const tripStatusStyles: Record<TripStatus, { label: string; badge: string }> = {
     label: "Completed",
     badge: "border-brand-success/20 bg-brand-success/9 text-brand-success",
   },
+  missed: {
+    label: "Missed",
+    badge: "border-red-500/30 bg-red-50 text-red-600 font-bold",
+  },
 };
 
 function SummaryCard({ item }: { item: SummaryItem }) {
@@ -291,6 +295,8 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
           "border-secondary bg-secondary text-secondary-foreground",
           trip.status === "completed" &&
           "border-brand-success bg-brand-success text-white",
+          trip.status === "missed" &&
+          "border-red-500 bg-red-500 text-white",
           trip.status === "scheduled" && "border-border text-muted-foreground",
         )}
       >
@@ -677,7 +683,7 @@ export function DashboardOverview() {
   const [shiftFuel, setShiftFuel] = useState<string | null>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "completed">("upcoming");
+  const [activeTab, setActiveTab] = useState<"upcoming" | "completed" | "missed">("upcoming");
   const [backendTodayTripsCount, setBackendTodayTripsCount] = useState<number | null>(null);
 
   const fetchTrips = () => {
@@ -860,22 +866,39 @@ export function DashboardOverview() {
     }
   };
 
-  const activeTripList: any[] = liveTrips.map((t: any) => ({
-    ...t,
-    onStatusChange: handleStatusChange,
-  }));
+  const nowMs = Date.now();
 
-  // Separate into Upcoming (sorted date & time ascending) and Completed (sorted date & time descending)
+  const isLegMissed = (t: any) => {
+    if (t.status === "completed") return false;
+    if (t.status === "inProgress") return false;
+    return t.timestampMs > 0 && t.timestampMs < nowMs;
+  };
+
+  const activeTripList: any[] = liveTrips.map((t: any) => {
+    const missed = isLegMissed(t);
+    return {
+      ...t,
+      status: missed ? "missed" : t.status,
+      onStatusChange: handleStatusChange,
+    };
+  });
+
+  // Separate into Upcoming, Completed, and Missed
   const upcomingTrips = activeTripList
-    .filter((t) => t.status !== "completed")
+    .filter((t) => t.status !== "completed" && t.status !== "missed")
     .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
 
   const completedTrips = activeTripList
     .filter((t) => t.status === "completed")
     .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
 
+  const missedTrips = activeTripList
+    .filter((t) => t.status === "missed")
+    .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+
   const upcomingCount = upcomingTrips.length;
   const completedCount = completedTrips.length;
+  const missedCount = missedTrips.length;
   const nextPickup = upcomingTrips.length > 0 ? upcomingTrips[0] : null;
 
   const localTodayCount = liveTrips.filter((t) => t.isToday).length;
@@ -914,7 +937,12 @@ export function DashboardOverview() {
     },
   ];
 
-  const displayedList = activeTab === "upcoming" ? upcomingTrips : completedTrips;
+  const displayedList =
+    activeTab === "upcoming"
+      ? upcomingTrips
+      : activeTab === "completed"
+        ? completedTrips
+        : missedTrips;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -942,7 +970,7 @@ export function DashboardOverview() {
               Trip Schedules
             </h2>
 
-            {/* Horizontal Tabs for Upcoming Trips and Completed Trips */}
+            {/* Horizontal Tabs: Upcoming Trips, Completed Trips, Missed Trips */}
             <div className="mt-3 flex items-center border-b border-border">
               <button
                 type="button"
@@ -974,6 +1002,21 @@ export function DashboardOverview() {
                   <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("missed")}
+                className={cn(
+                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  activeTab === "missed"
+                    ? "text-red-600 font-extrabold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Missed Trips ({missedCount})
+                {activeTab === "missed" && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-red-600" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -985,17 +1028,25 @@ export function DashboardOverview() {
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   {activeTab === "upcoming" ? (
                     <CalendarDays className="size-6" />
-                  ) : (
+                  ) : activeTab === "completed" ? (
                     <CheckCircle2 className="size-6" />
+                  ) : (
+                    <Clock3 className="size-6 text-red-500" />
                   )}
                 </div>
                 <h3 className="mt-4 text-base font-bold text-foreground">
-                  {activeTab === "upcoming" ? "No Upcoming Trips" : "No Completed Trips"}
+                  {activeTab === "upcoming"
+                    ? "No Upcoming Trips"
+                    : activeTab === "completed"
+                      ? "No Completed Trips"
+                      : "No Missed Trips"}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {activeTab === "upcoming"
                     ? "You currently have no upcoming ride assignments."
-                    : "You have not completed any trips yet."}
+                    : activeTab === "completed"
+                      ? "You have not completed any trips yet."
+                      : "You have no missed scheduled trips."}
                 </p>
               </div>
             ) : (
