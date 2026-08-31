@@ -139,9 +139,13 @@ export async function updateDriverTripStatusApi(
 }
 
 
-export async function getDriverEarningsApi(token: string) {
+export async function getDriverEarningsApi(token: string, startDate?: string, endDate?: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/drivers/me/earnings`, {
+    let url = `${API_BASE_URL}/drivers/me/earnings`;
+    if (startDate && endDate) {
+      url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    }
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return await res.json();
