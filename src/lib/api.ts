@@ -198,10 +198,11 @@ export async function endShiftApi(token: string, data: { odometer: string | numb
   }
 }
 
-export async function uploadImageApi(token: string, file: File) {
+export async function uploadImageApi(token: string, file: File, category = "avatars") {
   try {
     const formData = new FormData();
     formData.append("image", file);
+    formData.append("category", category);
     const res = await fetch(`${API_BASE_URL}/upload/image`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
@@ -210,6 +211,24 @@ export async function uploadImageApi(token: string, file: File) {
     return await res.json();
   } catch {
     return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to upload image" } };
+  }
+}
+
+
+
+export async function updateDriverProfileApi(
+  token: string,
+  data: { name?: string; phone?: string; licenseNumber?: string; licenseExpirationDate?: string; avatarUrl?: string }
+) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to update profile" } };
   }
 }
 

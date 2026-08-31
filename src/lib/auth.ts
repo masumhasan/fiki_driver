@@ -19,12 +19,22 @@ export type DriverSession = {
     licensePlate?: string;
   };
   licenseNumber?: string;
+  licenseExpirationDate?: string;
+  avatarUrl?: string;
   availabilityStatus?: "OFFLINE" | "ONLINE" | "ASSIGNED" | "UNAVAILABLE";
 };
 
 export function saveDriverSession(session: DriverSession): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(session));
+}
+
+export function updateDriverSession(partial: Partial<DriverSession>): DriverSession | null {
+  const current = getDriverSession();
+  if (!current) return null;
+  const updated = { ...current, ...partial };
+  saveDriverSession(updated);
+  return updated;
 }
 
 export function getDriverSession(): DriverSession | null {

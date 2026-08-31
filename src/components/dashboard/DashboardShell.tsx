@@ -12,6 +12,7 @@ import {
   Menu,
   Route,
   Settings,
+  User,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -20,6 +21,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { clearDriverSession, getDriverSession, getInitials, formatVehicleLine, type DriverSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { EditProfileModal } from "./EditProfileModal";
 
 const primaryNavigation = [
   {
@@ -224,6 +226,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const mobileNavigationId = useId();
   const notificationsId = useId();
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -369,8 +372,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:pr-3 cursor-pointer"
                   aria-label="Open profile menu"
                 >
-                  <span className="grid size-7 place-items-center rounded-lg bg-secondary text-[0.7rem] font-bold text-secondary-foreground">
-                    {initials}
+                  <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-secondary text-[0.7rem] font-bold text-secondary-foreground">
+                    {session?.avatarUrl ? (
+                      <img src={session.avatarUrl} alt={session.name} className="size-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </span>
                   <span className="hidden text-left sm:block">
                     <span className="block text-xs font-semibold text-foreground">
@@ -389,12 +396,32 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 {isProfileOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 z-50 w-52 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-[0_10px_30px_rgba(8,37,82,0.12)] backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
-                      <div className="border-b border-border/80 px-3 py-2.5">
-                        <p className="text-xs font-bold text-foreground">{session?.name || "Driver"}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{session?.email || "driver@fikitransit.com"}</p>
+                    <div className="absolute right-0 top-full mt-2 z-50 w-56 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-[0_10px_30px_rgba(8,37,82,0.12)] backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                      <div className="border-b border-border/80 px-3 py-2.5 flex items-center gap-2.5">
+                        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                          {session?.avatarUrl ? (
+                            <img src={session.avatarUrl} alt={session.name || "Driver"} className="size-full object-cover" />
+                          ) : (
+                            initials
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">{session?.name || "Driver"}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{session?.email || "driver@fikitransit.com"}</p>
+                        </div>
                       </div>
-                      <div className="pt-1">
+                      <div className="pt-1 space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            setIsEditProfileOpen(true);
+                          }}
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted cursor-pointer"
+                        >
+                          <User className="size-4 text-blue-600" />
+                          Edit Profile
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -419,6 +446,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <main className="mx-auto w-full max-w-[100rem] px-4 py-5 sm:px-6 sm:py-6 lg:px-6 lg:py-6">
           {children}
         </main>
+        <EditProfileModal
+          isOpen={isEditProfileOpen}
+          onClose={() => setIsEditProfileOpen(false)}
+          onSuccess={() => setSession(getDriverSession())}
+        />
       </div>
     </div>
   );
