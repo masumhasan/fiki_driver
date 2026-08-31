@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LoaderCircle, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -119,12 +120,12 @@ export function LoginForm() {
           >
             Password
           </label>
-          <a
-            href="#forgotPassword"
+          <Link
+            href="/forgot-password"
             className="text-xs font-medium text-secondary-foreground/70 transition-colors hover:text-secondary-foreground"
           >
             Forgot Password?
-          </a>
+          </Link>
         </div>
 
         <div className="relative">
