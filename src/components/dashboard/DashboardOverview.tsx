@@ -17,6 +17,7 @@ import {
   MapPin,
   Navigation,
   Phone,
+  PhoneCall,
   Route,
   ShieldAlert,
   Timer,
@@ -537,10 +538,15 @@ function VehiclePanel({
 function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
   return (
     <section className="rounded-2xl border border-destructive/20 bg-destructive/4 p-4">
-      <div className="flex items-center gap-2 text-destructive">
-        <ShieldAlert aria-hidden="true" className="size-4" />
+      <a
+        href="tel:911"
+        className="inline-flex items-center gap-2 text-destructive hover:underline focus:outline-none focus:ring-2 focus:ring-destructive/20 rounded-md cursor-pointer transition-colors"
+        title="Call 911 (Emergency)"
+      >
+        <ShieldAlert aria-hidden="true" className="size-4 shrink-0" />
         <h2 className="text-sm font-semibold">Emergency contact</h2>
-      </div>
+        <PhoneCall aria-hidden="true" className="size-3.5 shrink-0 ml-0.5" />
+      </a>
       <p className="mt-3 text-xs font-semibold text-foreground">
         FIKI Dispatch
       </p>
