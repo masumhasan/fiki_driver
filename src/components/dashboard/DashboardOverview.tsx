@@ -661,7 +661,61 @@ function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
   );
 }
 
+function getEffectiveTripDateAndTs(t: any, isReturnLeg = false): { formattedDate: string; rawDate: string; timestampMs: number } {
+  const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
 
+  const baseDateVal = isReturnLeg
+    ? (t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt)
+    : (t.startDate || t.pickupDate || t.createdAt);
+
+  const timeStr = isReturnLeg
+    ? (t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup")
+    : (t.pickupTime ? formatTimeTo12Hour(t.pickupTime) : "Scheduled");
+
+  let rawDateStr = String(baseDateVal || "").trim();
+  let ts = getTripTimestamp(rawDateStr, timeStr);
+
+  const now = new Date();
+  const todayStartMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+
+  if (isRecurring && ts < todayStartMs) {
+    const weekDaysFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const weekDaysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const targetDays = Array.isArray(t.recurringDays) && t.recurringDays.length > 0
+      ? t.recurringDays.map((d: string) => String(d).trim().toLowerCase())
+      : [weekDaysFull[now.getDay()].toLowerCase()];
+
+    for (let offset = 0; offset <= 14; offset++) {
+      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      const candFull = weekDaysFull[candidate.getDay()].toLowerCase();
+      const candShort = weekDaysShort[candidate.getDay()].toLowerCase();
+
+      const matches = targetDays.some((d: string) => d === candFull || d === candShort || candFull.startsWith(d));
+      if (matches) {
+        const candY = candidate.getFullYear();
+        const candM = String(candidate.getMonth() + 1).padStart(2, "0");
+        const candD = String(candidate.getDate()).padStart(2, "0");
+        const candDateStr = `${candY}-${candM}-${candD}`;
+        const candTs = getTripTimestamp(candDateStr, timeStr);
+
+        if (offset === 0 && candTs < now.getTime() && !["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) {
+          continue;
+        }
+
+        rawDateStr = candDateStr;
+        ts = candTs;
+        break;
+      }
+    }
+  }
+
+  return {
+    formattedDate: formatFullCardDate(rawDateStr),
+    rawDate: rawDateStr,
+    timestampMs: ts,
+  };
+}
 
 export function DashboardOverview() {
   const today = new Date();
@@ -730,7 +784,9 @@ export function DashboardOverview() {
                 res.data.trips.forEach((t: any) => {
                   let uiStatus: TripStatus = "scheduled";
                   if (t.status === "COMPLETED") uiStatus = "completed";
-                  else if (["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+                  else if (t.status === "MISSED") uiStatus = "missed";
+                  else if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+                  else uiStatus = "scheduled";
 
                   let nextStatus = "";
                   let nextActionLabel = "";
@@ -768,31 +824,25 @@ export function DashboardOverview() {
                     if (!matchesDay) return;
                   }
 
-                  const rawOutboundDate = t.startDate || t.pickupDate || t.createdAt;
-                  const formattedStartDate = formatFullCardDate(rawOutboundDate);
-
-                  const rawReturnDate = t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt;
-                  const formattedEndDate = formatFullCardDate(rawReturnDate);
-
+                  const outboundInfo = getEffectiveTripDateAndTs(t, false);
                   const outboundPickupTime = t.pickupTime
                     ? formatTimeTo12Hour(t.pickupTime)
                     : (t.createdAt
                         ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
                         : "Scheduled");
 
-                  const outboundTs = getTripTimestamp(rawOutboundDate, outboundPickupTime);
-
                   // Outbound Leg
                   mappedList.push({
                     id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
                     rawId: t._id,
+                    rawStatus: t.status,
                     status: uiStatus,
                     rideType: isRecurring ? "Recurring Trip" : isRoundTrip ? "Round Trip (Outbound)" : (t.tripType || "One way"),
                     time: outboundPickupTime,
-                    date: formattedStartDate,
-                    rawDate: rawOutboundDate,
-                    timestampMs: outboundTs,
-                    isToday: isTripToday(rawOutboundDate),
+                    date: outboundInfo.formattedDate,
+                    rawDate: outboundInfo.rawDate,
+                    timestampMs: outboundInfo.timestampMs,
+                    isToday: isTripToday(outboundInfo.rawDate),
                     passenger: passengerName,
                     initials,
                     mobility,
@@ -805,18 +855,19 @@ export function DashboardOverview() {
 
                   // Return Leg for Round Trips
                   if (isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
+                    const returnInfo = getEffectiveTripDateAndTs(t, true);
                     const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
-                    const returnTs = getTripTimestamp(rawReturnDate, returnTimeFormatted);
                     mappedList.push({
                       id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
                       rawId: t._id,
+                      rawStatus: t.status,
                       status: uiStatus,
                       rideType: "Round Trip (Return)",
                       time: returnTimeFormatted,
-                      date: formattedEndDate,
-                      rawDate: rawReturnDate,
-                      timestampMs: returnTs,
-                      isToday: isTripToday(rawReturnDate),
+                      date: returnInfo.formattedDate,
+                      rawDate: returnInfo.rawDate,
+                      timestampMs: returnInfo.timestampMs,
+                      isToday: isTripToday(returnInfo.rawDate),
                       passenger: passengerName,
                       initials,
                       mobility,
@@ -869,8 +920,12 @@ export function DashboardOverview() {
   const nowMs = Date.now();
 
   const isLegMissed = (t: any) => {
-    if (t.status === "completed") return false;
-    if (t.status === "inProgress") return false;
+    if (t.status === "completed" || t.status === "missed") {
+      return t.status === "missed";
+    }
+    if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.rawStatus) && t.isToday) {
+      return false;
+    }
     return t.timestampMs > 0 && t.timestampMs < nowMs;
   };
 
