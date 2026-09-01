@@ -807,11 +807,12 @@ export function DashboardOverview() {
                   const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
                   const mobility = Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard";
 
+                  const isChildLeg = Boolean(t.parentRequestId || t.legType);
                   const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
                   const isRoundTrip = t.tripType === "round-trip" || t.tripType === "round_trip" || t.isRoundTrip === true;
 
-                  // Filter recurring trips to ensure they only appear on their scheduled Recurring Days
-                  if (isRecurring && Array.isArray(t.recurringDays) && t.recurringDays.length > 0) {
+                  // Filter unexpanded master recurring trips to ensure they only appear on their scheduled Recurring Days
+                  if (!isChildLeg && isRecurring && Array.isArray(t.recurringDays) && t.recurringDays.length > 0) {
                     const matchesDay = t.recurringDays.some((day: string) => {
                       const d = day.trim().toLowerCase();
                       return (
@@ -823,20 +824,28 @@ export function DashboardOverview() {
                     if (!matchesDay) return;
                   }
 
-                  const outboundInfo = getEffectiveTripDateAndTs(t, false);
+                  const outboundInfo = getEffectiveTripDateAndTs(t, Boolean(t.isReturnLeg));
                   const outboundPickupTime = t.pickupTime
                     ? formatTimeTo12Hour(t.pickupTime)
                     : (t.createdAt
                         ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
                         : "Scheduled");
 
-                  // Outbound Leg
+                  const legLabel = t.isReturnLeg
+                    ? "Round Trip (Return)"
+                    : isRoundTrip
+                      ? "Round Trip (Outbound)"
+                      : isRecurring
+                        ? "Recurring Trip"
+                        : (t.tripType || "One way");
+
+                  // Outbound / Individual Leg
                   mappedList.push({
-                    id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}`,
+                    id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}${t.isReturnLeg ? "-RET" : ""}`,
                     rawId: t._id,
                     rawStatus: t.status,
                     status: uiStatus,
-                    rideType: isRecurring ? "Recurring Trip" : isRoundTrip ? "Round Trip (Outbound)" : (t.tripType || "One way"),
+                    rideType: legLabel,
                     time: outboundPickupTime,
                     date: outboundInfo.formattedDate,
                     rawDate: outboundInfo.rawDate,
@@ -852,8 +861,8 @@ export function DashboardOverview() {
                     nextActionLabel,
                   });
 
-                  // Return Leg for Round Trips
-                  if (isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
+                  // Legacy single-doc fallback for unexpanded round trips only
+                  if (!isChildLeg && isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
                     const returnInfo = getEffectiveTripDateAndTs(t, true);
                     const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
                     mappedList.push({
