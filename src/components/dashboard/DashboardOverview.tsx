@@ -659,10 +659,24 @@ function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
 }
 
 function getEffectiveTripDateAndTs(t: any, isReturnLeg = false): { formattedDate: string; rawDate: string; timestampMs: number } {
+  // If this trip has an explicit YYYY-MM-DD pickupDate, use it directly!
+  if (t.pickupDate && /^\d{4}-\d{2}-\d{2}$/.test(String(t.pickupDate).trim())) {
+    const rawDateStr = String(t.pickupDate).trim();
+    const timeStr = t.pickupTime
+      ? formatTimeTo12Hour(t.pickupTime)
+      : (isReturnLeg ? (t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup") : "Scheduled");
+    const ts = getTripTimestamp(rawDateStr, timeStr);
+    return {
+      formattedDate: formatFullCardDate(rawDateStr),
+      rawDate: rawDateStr,
+      timestampMs: ts,
+    };
+  }
+
   const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
 
   const baseDateVal = isReturnLeg
-    ? (t.endDate || t.returnDate || t.startDate || t.pickupDate || t.createdAt)
+    ? (t.returnDate || t.endDate || t.startDate || t.pickupDate || t.createdAt)
     : (t.startDate || t.pickupDate || t.createdAt);
 
   const timeStr = isReturnLeg
