@@ -176,7 +176,18 @@ export async function getScheduleSummaryApi(token: string) {
   }
 }
 
-export async function startShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string; photoUrl?: string }) {
+export async function startShiftApi(
+  token: string,
+  data: {
+    odometer: string | number;
+    fuel?: string;
+    condition?: string;
+    notes?: string;
+    photoUrl?: string;
+    photos?: string[];
+    startPhotoUrls?: string[];
+  }
+) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/start`, {
       method: "POST",
@@ -189,7 +200,18 @@ export async function startShiftApi(token: string, data: { odometer: string | nu
   }
 }
 
-export async function endShiftApi(token: string, data: { odometer: string | number; fuel?: string; condition?: string; notes?: string; photoUrl?: string }) {
+export async function endShiftApi(
+  token: string,
+  data: {
+    odometer: string | number;
+    fuel?: string;
+    condition?: string;
+    notes?: string;
+    photoUrl?: string;
+    photos?: string[];
+    endPhotoUrls?: string[];
+  }
+) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/shifts/end`, {
       method: "POST",

@@ -107,8 +107,7 @@ export function ShiftForm({
   const [fuel, setFuel] = useState('half')
   const [condition, setCondition] = useState<Condition>('clear')
   const [notes, setNotes] = useState('')
-  const [photoName, setPhotoName] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('')
+  const [photos, setPhotos] = useState<Array<{ name: string; url: string }>>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -133,23 +132,35 @@ export function ShiftForm({
       : '42.6'
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setPhotoName(file.name)
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
     setError('')
     setUploadingPhoto(true)
 
     const token = session?.token
     if (token) {
       const { uploadImageApi } = await import('@/lib/api')
-      const res = await uploadImageApi(token, file)
-      if (res.success && res.data?.url) {
-        setPhotoUrl(res.data.url)
+      const uploadedList: Array<{ name: string; url: string }> = []
+
+      for (const file of files) {
+        const res = await uploadImageApi(token, file)
+        if (res.success && res.data?.url) {
+          uploadedList.push({ name: file.name, url: res.data.url })
+        }
+      }
+
+      if (uploadedList.length > 0) {
+        setPhotos((prev) => [...prev, ...uploadedList])
       } else {
-        setError('Failed to upload vehicle photo to S3.')
+        setError('Failed to upload vehicle photos to S3.')
       }
     }
     setUploadingPhoto(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function submitShift(event: React.FormEvent<HTMLFormElement>) {
@@ -172,7 +183,17 @@ export function ShiftForm({
     }
 
     try {
-      const payload = { odometer: rawNum, fuel, condition, notes, photoUrl }
+      const photoUrlsList = photos.map((p) => p.url)
+      const payload = {
+        odometer: rawNum,
+        fuel,
+        condition,
+        notes,
+        photoUrl: photoUrlsList[0] || '',
+        photos: photoUrlsList,
+        startPhotoUrls: isStart ? photoUrlsList : undefined,
+        endPhotoUrls: !isStart ? photoUrlsList : undefined,
+      }
       const res = isStart ? await startShiftApi(token, payload) : await endShiftApi(token, payload)
       if (res.success) {
         onSuccess?.()
@@ -256,48 +277,83 @@ export function ShiftForm({
                 ref={fileInputRef}
                 id={uploadId}
                 type="file"
+                multiple
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
                 onChange={handleFileChange}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand-soft bg-card px-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-70"
-              >
-                {uploadingPhoto ? (
-                  <>
-                    <Loader2 className="size-8 animate-spin text-blue-600" />
-                    <span className="mt-3 text-sm font-semibold text-blue-600">
-                      Uploading photo to S3...
-                    </span>
-                  </>
-                ) : photoName ? (
-                  <>
-                    <Check className="size-8 text-emerald-600" />
-                    <span className="mt-2 max-w-full truncate text-sm font-semibold text-foreground">
-                      {photoName}
-                    </span>
-                    <span className="mt-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-700">
-                      S3 Uploaded ✓
-                    </span>
-                    <span className="mt-1 text-[0.7rem] text-muted-foreground">
-                      Click to replace
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <ImagePlus className="size-8 text-blue-600" />
-                    <span className="mt-2 text-sm font-semibold text-blue-600">
-                      Take Photo or Upload
-                    </span>
-                    <span className="mt-1 text-xs text-muted-foreground">
-                      JPG, PNG up to 10MB
-                    </span>
-                  </>
-                )}
-              </button>
+              {photos.length > 0 ? (
+                <div className="mt-3 space-y-2.5">
+                  <div className="grid grid-cols-3 gap-2">
+                    {photos.map((p, idx) => (
+                      <div key={`${p.url}-${idx}`} className="group relative aspect-video overflow-hidden rounded-xl border border-border bg-slate-900 shadow-sm">
+                        <img src={p.url} alt={p.name} className="size-full object-cover transition-transform group-hover:scale-105" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-red-600/90 text-white shadow backdrop-blur-sm transition-transform hover:scale-110 hover:bg-red-700"
+                          title="Remove photo"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {photos.length < 6 && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingPhoto}
+                        className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-400/60 bg-card text-center transition-colors hover:border-blue-600 hover:bg-blue-50/50 disabled:opacity-50"
+                      >
+                        {uploadingPhoto ? (
+                          <Loader2 className="size-5 animate-spin text-blue-600" />
+                        ) : (
+                          <>
+                            <ImagePlus className="size-5 text-blue-600" />
+                            <span className="mt-1 text-[0.65rem] font-bold text-blue-600">+ Add photo</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[0.7rem] text-muted-foreground">
+                    <span className="font-semibold text-emerald-600">✓ {photos.length} photo{photos.length > 1 ? 's' : ''} uploaded to S3</span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      + Add more
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand-soft bg-card px-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-70"
+                >
+                  {uploadingPhoto ? (
+                    <>
+                      <Loader2 className="size-8 animate-spin text-blue-600" />
+                      <span className="mt-3 text-sm font-semibold text-blue-600">
+                        Uploading photo(s) to S3...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="size-8 text-blue-600" />
+                      <span className="mt-2 text-sm font-semibold text-blue-600">
+                        Take Photo(s) or Upload
+                      </span>
+                      <span className="mt-1 text-xs text-muted-foreground">
+                        Select multiple (Odometer, Front, Rear, Damage)
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
             </section>
           </div>
 
