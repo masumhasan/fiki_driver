@@ -736,7 +736,7 @@ export function DashboardOverview() {
   const [shiftFuel, setShiftFuel] = useState<string | null>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "completed" | "missed">("upcoming");
+  const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "completed" | "missed">("today");
   const [backendTodayTripsCount, setBackendTodayTripsCount] = useState<number | null>(null);
 
   const fetchTrips = () => {
@@ -937,9 +937,16 @@ export function DashboardOverview() {
     };
   });
 
-  // Separate into Upcoming, Completed, and Missed
+  const nowObj = new Date();
+  const tomorrowStartMs = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate() + 1, 0, 0, 0).getTime();
+
+  // Separate into Today's Trips, Upcoming Trips (tomorrow onwards), Completed, and Missed
+  const todayTrips = activeTripList
+    .filter((t) => t.status !== "completed" && t.status !== "missed" && t.isToday)
+    .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+
   const upcomingTrips = activeTripList
-    .filter((t) => t.status !== "completed" && t.status !== "missed")
+    .filter((t) => t.status !== "completed" && t.status !== "missed" && !t.isToday && (t.timestampMs || 0) >= tomorrowStartMs)
     .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
 
   const completedTrips = activeTripList
@@ -950,10 +957,11 @@ export function DashboardOverview() {
     .filter((t) => t.status === "missed")
     .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
 
+  const todayCount = todayTrips.length;
   const upcomingCount = upcomingTrips.length;
   const completedCount = completedTrips.length;
   const missedCount = missedTrips.length;
-  const nextPickup = upcomingTrips.length > 0 ? upcomingTrips[0] : null;
+  const nextPickup = todayTrips.length > 0 ? todayTrips[0] : (upcomingTrips.length > 0 ? upcomingTrips[0] : null);
 
   const localTodayCount = liveTrips.filter((t) => t.isToday).length;
   const todayTripsCount = backendTodayTripsCount !== null && backendTodayTripsCount > 0
@@ -992,11 +1000,13 @@ export function DashboardOverview() {
   ];
 
   const displayedList =
-    activeTab === "upcoming"
-      ? upcomingTrips
-      : activeTab === "completed"
-        ? completedTrips
-        : missedTrips;
+    activeTab === "today"
+      ? todayTrips
+      : activeTab === "upcoming"
+        ? upcomingTrips
+        : activeTab === "completed"
+          ? completedTrips
+          : missedTrips;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -1024,13 +1034,28 @@ export function DashboardOverview() {
               Trip Schedules
             </h2>
 
-            {/* Horizontal Tabs: Upcoming Trips, Completed Trips, Missed Trips */}
-            <div className="mt-3 flex items-center border-b border-border">
+            {/* Horizontal Tabs: Today's Trips, Upcoming Trips, Completed Trips, Missed Trips */}
+            <div className="mt-3 flex items-center border-b border-border overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab("today")}
+                className={cn(
+                  "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
+                  activeTab === "today"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Today's Trips ({todayCount})
+                {activeTab === "today" && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
+                )}
+              </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("upcoming")}
                 className={cn(
-                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "upcoming"
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
@@ -1045,7 +1070,7 @@ export function DashboardOverview() {
                 type="button"
                 onClick={() => setActiveTab("completed")}
                 className={cn(
-                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "completed"
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
@@ -1060,7 +1085,7 @@ export function DashboardOverview() {
                 type="button"
                 onClick={() => setActiveTab("missed")}
                 className={cn(
-                  "relative px-5 py-3 text-xs font-bold transition-colors",
+                  "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "missed"
                     ? "text-red-600 font-extrabold"
                     : "text-muted-foreground hover:text-foreground",
@@ -1080,8 +1105,10 @@ export function DashboardOverview() {
             ) : displayedList.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-[0_6px_20px_rgba(8,37,82,0.05)]">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  {activeTab === "upcoming" ? (
+                  {activeTab === "today" ? (
                     <CalendarDays className="size-6" />
+                  ) : activeTab === "upcoming" ? (
+                    <Clock3 className="size-6" />
                   ) : activeTab === "completed" ? (
                     <CheckCircle2 className="size-6" />
                   ) : (
@@ -1089,18 +1116,22 @@ export function DashboardOverview() {
                   )}
                 </div>
                 <h3 className="mt-4 text-base font-bold text-foreground">
-                  {activeTab === "upcoming"
-                    ? "No Upcoming Trips"
-                    : activeTab === "completed"
-                      ? "No Completed Trips"
-                      : "No Missed Trips"}
+                  {activeTab === "today"
+                    ? "No Trips Scheduled For Today"
+                    : activeTab === "upcoming"
+                      ? "No Upcoming Trips Scheduled"
+                      : activeTab === "completed"
+                        ? "No Completed Trips"
+                        : "No Missed Trips"}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {activeTab === "upcoming"
-                    ? "You currently have no upcoming ride assignments."
-                    : activeTab === "completed"
-                      ? "You have not completed any trips yet."
-                      : "You have no missed scheduled trips."}
+                  {activeTab === "today"
+                    ? "You currently have no ride assignments scheduled for today."
+                    : activeTab === "upcoming"
+                      ? "Assigned future trips starting from tomorrow will appear here."
+                      : activeTab === "completed"
+                        ? "Trips you complete will be stored here for your records."
+                        : "Uncompleted past trips whose scheduled pickup time passed will appear here."}
                 </p>
               </div>
             ) : (
