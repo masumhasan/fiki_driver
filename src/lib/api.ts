@@ -83,7 +83,7 @@ export async function updateDriverLocationApi(token: string, latitude: number, l
   }
 }
 
-export async function getDriverTripsApi(token: string, status?: string, page = 1, limit = 20) {
+export async function getDriverTripsApi(token: string, status?: string, page = 1, limit = 1000) {
   try {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (status) params.append("status", status);
