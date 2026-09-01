@@ -172,12 +172,12 @@ export function ScheduleAttendance() {
 
   // Format Started time
   const startedDisplay = shift?.startedAt
-    ? new Date(shift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(shift.startedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Chicago" })
     : "—";
 
   // Format Ended time
   const endedDisplay = isCompleted && shift?.endedAt
-    ? new Date(shift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(shift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Chicago" })
     : isInProgress
       ? "In Progress"
       : "—";

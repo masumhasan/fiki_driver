@@ -230,6 +230,7 @@ function formatStepTime(dateVal?: string | Date): string | null {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "America/Chicago",
   });
 }
 
@@ -1045,17 +1046,22 @@ export function RideDetailsOverview() {
     trip.returnDestinationAddress ||
     "1611 NW 12th Ave, Miami, FL";
 
-  const pickupDateStr = trip.pickupDate
-    ? new Date(trip.pickupDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : new Date(trip.createdAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+  const rawDate = trip.pickupDate || trip.startDate || trip.createdAt;
+  const pickupDateStr = rawDate
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(String(rawDate).trim())
+        ? new Date(String(rawDate).trim() + "T00:00:00").toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "America/Chicago",
+          })
+        : new Date(rawDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "America/Chicago",
+          }))
+    : "—";
   const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "8:00 AM";
   const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : "8:45 AM";
 

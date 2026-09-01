@@ -273,12 +273,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
     ? session.name.split(" ")[0] + (session.name.split(" ")[1]?.[0] ? " " + session.name.split(" ")[1][0] + "." : "")
     : "Driver";
 
-  // Get current day + date
+  // Get current day + date in Central Time (America/Chicago)
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "America/Chicago",
   });
 
   useEffect(() => {

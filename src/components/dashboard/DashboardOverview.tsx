@@ -449,11 +449,11 @@ function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
   }, [todayShift]);
 
   const clockInDisplay = todayShift?.startedAt
-    ? new Date(todayShift.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
+    ? new Date(todayShift.startedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: CENTRAL_TZ })
     : "—";
 
   const clockOutDisplay = todayShift?.status === "COMPLETED" && todayShift?.endedAt
-    ? new Date(todayShift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
+    ? new Date(todayShift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: CENTRAL_TZ })
     : "—";
 
   const todayScheduleDisplay = todayShift?.todayScheduleHours || "8:00 AM – 4:00 PM";
@@ -787,10 +787,8 @@ export function DashboardOverview() {
                 }
 
                 const now = new Date();
-                const weekDaysFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                const weekDaysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                const todayDayFull = weekDaysFull[now.getDay()];
-                const todayDayShort = weekDaysShort[now.getDay()];
+                const todayDayFull = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: CENTRAL_TZ }).format(now);
+                const todayDayShort = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: CENTRAL_TZ }).format(now);
 
                 const mappedList: any[] = [];
 
