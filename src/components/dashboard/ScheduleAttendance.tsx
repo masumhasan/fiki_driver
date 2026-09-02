@@ -108,6 +108,7 @@ function ScheduleSkeleton() {
 export function ScheduleAttendance() {
   const [shiftModal, setShiftModal] = useState<"start" | "end" | null>(null);
   const [shift, setShift] = useState<any>(null);
+  const [pendingReportShift, setPendingReportShift] = useState<any>(null);
   const [scheduleCheck, setScheduleCheck] = useState<ScheduleCheck | null>(null);
   const [summaryData, setSummaryData] = useState<{
     tripSummary: { totalTrips: number; completed: number; inProgress: number; remaining: number };
@@ -138,6 +139,12 @@ export function ScheduleAttendance() {
       if (res.success && res.data) {
         setShift(res.data.todayShift);
         setSummaryData(res.data);
+        if (res.data.pendingEndReportShift) {
+          setPendingReportShift(res.data.pendingEndReportShift);
+          setShiftModal("end");
+        } else {
+          setPendingReportShift(null);
+        }
         if (res.data.todayScheduleCheck) {
           setScheduleCheck(res.data.todayScheduleCheck as ScheduleCheck);
         }
@@ -563,14 +570,18 @@ export function ScheduleAttendance() {
                     <td className="px-5 py-3.5">
                       <span
                         className={cn(
-                          "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                          "inline-block rounded-full border px-2.5 py-0.5 text-[0.68rem] font-semibold",
                           row.attendance === "Present"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : row.attendance === "In Progress"
-                              ? "bg-amber-100 text-amber-700"
-                              : row.attendance === "Off"
-                                ? "bg-slate-100 text-slate-600"
-                                : "bg-blue-100 text-blue-700",
+                            ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                            : row.attendance === "Late"
+                              ? "bg-amber-100 border-amber-300 text-amber-800"
+                              : row.attendance === "Absent"
+                                ? "bg-rose-100 border-rose-300 text-rose-800"
+                                : row.attendance === "In Progress"
+                                  ? "bg-blue-100 border-blue-300 text-blue-800"
+                                  : row.attendance === "Off"
+                                    ? "bg-slate-100 border-slate-200 text-slate-600"
+                                    : "bg-amber-50 border-amber-200 text-amber-700",
                         )}
                       >
                         {row.attendance}
@@ -599,7 +610,8 @@ export function ScheduleAttendance() {
       {shiftModal && (
         <ShiftForm
           mode={shiftModal}
-          startOdometerVal={shift?.startingOdometer}
+          startOdometerVal={pendingReportShift?.startingOdometer || shift?.startingOdometer}
+          pendingReportShift={pendingReportShift}
           onClose={() => setShiftModal(null)}
           onSuccess={fetchShiftStatus}
         />

@@ -87,11 +87,13 @@ export function ShiftForm({
   onClose,
   onSuccess,
   startOdometerVal,
+  pendingReportShift,
 }: {
   mode: ShiftMode
   onClose: () => void
   onSuccess?: () => void
   startOdometerVal?: number
+  pendingReportShift?: any
 }) {
   const uploadId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -121,7 +123,9 @@ export function ShiftForm({
 
   const actionLabel = isStart
     ? 'Start Shift & Clock In'
-    : 'End Shift & Clock Out'
+    : pendingReportShift
+      ? 'Complete Shift End Report'
+      : 'End Shift & Clock Out'
 
   // Calculate live estimated miles for end shift modal
   const numEndOdo = parseFloat(odometer.replace(/[^\d.]/g, ''))
@@ -221,12 +225,14 @@ export function ShiftForm({
       <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-[0_28px_80px_rgba(1,15,36,0.34)]">
         <header className="relative border-b border-border px-5 py-5 pr-16 sm:px-7 sm:py-6">
           <h1 className="text-xl font-bold tracking-[-0.035em] text-foreground sm:text-2xl">
-            {isStart ? 'Start Shift' : 'End Shift'}
+            {isStart ? 'Start Shift' : pendingReportShift ? 'Complete Last Shift End Report' : 'End Shift'}
           </h1>
           <p className="mt-1.5 max-w-xl text-sm leading-5 text-muted-foreground">
             {isStart
               ? 'Confirm vehicle and enter starting mileage before clocking in.'
-              : 'Enter ending mileage and confirm your vehicle status before clocking out.'}
+              : pendingReportShift
+                ? 'Your previous shift was auto-ended at your scheduled end time. Please submit your ending mileage and vehicle status.'
+                : 'Enter ending mileage and confirm your vehicle status before clocking out.'}
           </p>
           <button
             type="button"
@@ -239,6 +245,18 @@ export function ShiftForm({
         </header>
 
         <form onSubmit={submitShift} className="space-y-4 p-5 sm:p-7">
+          {pendingReportShift && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 leading-relaxed">
+              <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                <TriangleAlert className="size-4 text-amber-600 shrink-0" />
+                Action Required: Complete Last Shift Report
+              </p>
+              <p className="mt-1 text-amber-800">
+                Your shift on <strong>{pendingReportShift.shiftDate}</strong> was auto-ended at your scheduled shift end time ({pendingReportShift.endedAt ? new Date(pendingReportShift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Chicago" }) : "4:00 PM"} CT).
+                Please enter your ending odometer and vehicle condition to complete your report before starting your next shift.
+              </p>
+            </div>
+          )}
           <section className="rounded-xl border border-border bg-muted/45 p-4 sm:p-5">
             <SectionTitle icon={ArrowLeftRight}>Assigned Vehicle</SectionTitle>
             <div className="mt-3 flex h-11 w-full items-center justify-between rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm">
