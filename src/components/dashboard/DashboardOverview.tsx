@@ -65,6 +65,21 @@ type Trip = {
 
 const CENTRAL_TZ = "America/Chicago";
 
+function getCentralTodayDateStr(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CENTRAL_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
 function formatFullCardDate(dateVal?: string | Date) {
   if (!dateVal) {
     const d = new Date();
@@ -98,30 +113,20 @@ function formatFullCardDate(dateVal?: string | Date) {
 function getTripTimestamp(dateVal?: string | Date, timeStr?: string): number {
   if (!dateVal) return 0;
 
-  let year: number;
-  let month: number;
-  let day: number;
-
+  let dateStr = "";
   const rawStr = String(dateVal).trim();
-
   if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr)) {
-    const [y, m, d] = rawStr.split("-").map(Number);
-    year = y;
-    month = m - 1;
-    day = d;
+    dateStr = rawStr;
   } else {
     const dObj = new Date(dateVal);
     if (!isNaN(dObj.getTime())) {
-      year = dObj.getFullYear();
-      month = dObj.getMonth();
-      day = dObj.getDate();
+      dateStr = getCentralTodayDateStr(dObj);
     } else {
-      const now = new Date();
-      year = now.getFullYear();
-      month = now.getMonth();
-      day = now.getDate();
+      dateStr = getCentralTodayDateStr();
     }
   }
+
+  const [year, month, day] = dateStr.split("-").map(Number);
 
   let hours = 8;
   let minutes = 0;
@@ -140,15 +145,33 @@ function getTripTimestamp(dateVal?: string | Date, timeStr?: string): number {
     }
   }
 
-  return new Date(year, month, day, hours, minutes, 0, 0).getTime();
+  const sampleDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const timeZoneName = new Intl.DateTimeFormat("en-US", {
+    timeZone: CENTRAL_TZ,
+    timeZoneName: "short",
+  }).format(sampleDate);
+  const offsetHours = timeZoneName.includes("CDT") ? 5 : 6;
+
+  return Date.UTC(year, month - 1, day, hours + offsetHours, minutes, 0, 0);
 }
 
 function isTripToday(dateVal?: string | Date): boolean {
   if (!dateVal) return false;
-  const now = new Date();
-  const todayFormatted = formatFullCardDate(now);
-  const cardFormatted = formatFullCardDate(dateVal);
-  return todayFormatted === cardFormatted;
+  const todayCentralStr = getCentralTodayDateStr();
+
+  let cardDateStr = "";
+  if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+    cardDateStr = dateVal.trim();
+  } else if (dateVal instanceof Date) {
+    cardDateStr = getCentralTodayDateStr(dateVal);
+  } else {
+    const dObj = new Date(dateVal);
+    if (!isNaN(dObj.getTime())) {
+      cardDateStr = getCentralTodayDateStr(dObj);
+    }
+  }
+
+  return todayCentralStr === cardDateStr;
 }
 
 function SummaryCardSkeleton() {
@@ -684,36 +707,36 @@ function getEffectiveTripDateAndTs(t: any, isReturnLeg = false): { formattedDate
     ? (t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup")
     : (t.pickupTime ? formatTimeTo12Hour(t.pickupTime) : "Scheduled");
 
-  let rawDateStr = String(baseDateVal || "").trim();
+  let rawDateStr = typeof baseDateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(baseDateVal.trim())
+    ? baseDateVal.trim()
+    : getCentralTodayDateStr(new Date(baseDateVal));
+
   let ts = getTripTimestamp(rawDateStr, timeStr);
 
   const now = new Date();
-  const todayStartMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+  const todayCentralStr = getCentralTodayDateStr(now);
+  const [cY, cM, cD] = todayCentralStr.split("-").map(Number);
+  const todayStartMs = getTripTimestamp(todayCentralStr, "12:00 AM");
 
   if (isRecurring && ts < todayStartMs) {
-    const weekDaysFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const weekDaysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const weekDaysFull = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const weekDaysShort = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
     const targetDays = Array.isArray(t.recurringDays) && t.recurringDays.length > 0
       ? t.recurringDays.map((d: string) => String(d).trim().toLowerCase())
-      : [weekDaysFull[now.getDay()].toLowerCase()];
+      : [];
 
     for (let offset = 0; offset <= 14; offset++) {
-      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-      const candFull = weekDaysFull[candidate.getDay()].toLowerCase();
-      const candShort = weekDaysShort[candidate.getDay()].toLowerCase();
+      const candidateCentralObj = new Date(Date.UTC(cY, cM - 1, cD + offset, 12, 0, 0));
+      const candDateStr = getCentralTodayDateStr(candidateCentralObj);
 
-      const matches = targetDays.some((d: string) => d === candFull || d === candShort || candFull.startsWith(d));
+      const dayIdx = candidateCentralObj.getUTCDay();
+      const candFull = weekDaysFull[dayIdx];
+      const candShort = weekDaysShort[dayIdx];
+
+      const matches = targetDays.length === 0 || targetDays.some((d: string) => d === candFull || d === candShort || candFull.startsWith(d));
       if (matches) {
-        const candY = candidate.getFullYear();
-        const candM = String(candidate.getMonth() + 1).padStart(2, "0");
-        const candD = String(candidate.getDate()).padStart(2, "0");
-        const candDateStr = `${candY}-${candM}-${candD}`;
         const candTs = getTripTimestamp(candDateStr, timeStr);
-
-        if (offset === 0 && candTs < now.getTime() && !["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) {
-          continue;
-        }
 
         rawDateStr = candDateStr;
         ts = candTs;
@@ -959,16 +982,15 @@ export function DashboardOverview() {
     };
   });
 
-  const nowObj = new Date();
-  const tomorrowStartMs = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate() + 1, 0, 0, 0).getTime();
+  const todayCentralStr = getCentralTodayDateStr();
 
-  // Separate into Today's Trips, Upcoming Trips (tomorrow onwards), Completed, and Missed
+  // Separate into Today's Trips, Upcoming Trips (future days), Completed, and Missed
   const todayTrips = activeTripList
     .filter((t) => t.status !== "completed" && t.status !== "missed" && t.isToday)
     .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
 
   const upcomingTrips = activeTripList
-    .filter((t) => t.status !== "completed" && t.status !== "missed" && !t.isToday && (t.timestampMs || 0) >= tomorrowStartMs)
+    .filter((t) => t.status !== "completed" && t.status !== "missed" && !t.isToday && (t.rawDate ? t.rawDate > todayCentralStr : true))
     .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
 
   const completedTrips = activeTripList
