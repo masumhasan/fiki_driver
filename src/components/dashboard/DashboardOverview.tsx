@@ -946,10 +946,22 @@ export function DashboardOverview() {
       }
     });
   };
+  const [currentDateStr, setCurrentDateStr] = useState(getCentralTodayDateStr());
 
   useEffect(() => {
     fetchTrips();
-  }, []);
+    
+    // Check every minute if the day has rolled over. If it has, update state and refetch.
+    const interval = setInterval(() => {
+      const newDateStr = getCentralTodayDateStr();
+      if (newDateStr !== currentDateStr) {
+        setCurrentDateStr(newDateStr);
+        fetchTrips();
+      }
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, [currentDateStr]);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
     // Block only if shift was never started (null). Allow both IN_PROGRESS and COMPLETED
@@ -971,7 +983,7 @@ export function DashboardOverview() {
     }
   };
 
-  const todayCentralStr = getCentralTodayDateStr();
+  const todayCentralStr = currentDateStr;
 
   const isLegMissed = (t: any) => {
     // If the backend explicitly flagged it as completed or missed, honour that
