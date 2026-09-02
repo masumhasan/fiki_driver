@@ -358,7 +358,7 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
                 {trip.rideType}
               </span>
               <span className="ml-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                {formatFullCardDate(trip.date)}
+                {trip.date}
               </span>
             </div>
 
