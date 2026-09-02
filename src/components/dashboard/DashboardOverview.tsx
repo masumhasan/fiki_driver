@@ -991,8 +991,11 @@ export function DashboardOverview() {
 
   const activeTripList: any[] = liveTrips.map((t: any) => {
     const missed = isLegMissed(t);
+    // Dynamically recalculate isToday on render to handle day rollovers
+    const isActuallyToday = t.rawDate === todayCentralStr;
     return {
       ...t,
+      isToday: isActuallyToday,
       status: missed ? "missed" : t.status,
       onStatusChange: handleStatusChange,
     };
@@ -1021,7 +1024,7 @@ export function DashboardOverview() {
   const missedCount = missedTrips.length;
   const nextPickup = todayTrips.length > 0 ? todayTrips[0] : (upcomingTrips.length > 0 ? upcomingTrips[0] : null);
 
-  const localTodayCount = liveTrips.filter((t) => t.isToday).length;
+  const localTodayCount = activeTripList.filter((t) => t.isToday).length;
   const todayTripsCount = backendTodayTripsCount !== null && backendTodayTripsCount > 0
     ? backendTodayTripsCount
     : localTodayCount;
