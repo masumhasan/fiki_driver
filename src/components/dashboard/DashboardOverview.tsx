@@ -971,16 +971,22 @@ export function DashboardOverview() {
     }
   };
 
-  const nowMs = Date.now();
+  const todayCentralStr = getCentralTodayDateStr();
 
   const isLegMissed = (t: any) => {
+    // If the backend explicitly flagged it as completed or missed, honour that
     if (t.status === "completed" || t.status === "missed") {
       return t.status === "missed";
     }
-    if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.rawStatus) && t.isToday) {
+    // Never mark as missed if the driver is already actively working the trip
+    if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.rawStatus)) {
       return false;
     }
-    return t.timestampMs > 0 && t.timestampMs < nowMs;
+    // A trip is "missed" ONLY when its scheduled date is fully in the past
+    // (i.e. belongs to a prior day). If the trip is still today, keep it in
+    // Today's Trips regardless of whether the pickup time has already elapsed.
+    if (!t.rawDate) return false;
+    return t.rawDate < todayCentralStr;
   };
 
   const activeTripList: any[] = liveTrips.map((t: any) => {
@@ -991,8 +997,6 @@ export function DashboardOverview() {
       onStatusChange: handleStatusChange,
     };
   });
-
-  const todayCentralStr = getCentralTodayDateStr();
 
   // Separate into Today's Trips, Upcoming Trips (future days), Completed, and Missed
   const todayTrips = activeTripList
