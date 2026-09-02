@@ -952,7 +952,9 @@ export function DashboardOverview() {
   }, []);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
-    if (shiftStatus !== "IN_PROGRESS") {
+    // Block only if shift was never started (null). Allow both IN_PROGRESS and COMPLETED
+    // so drivers can finish any in-progress trips even after shift auto-ends.
+    if (shiftStatus !== "IN_PROGRESS" && shiftStatus !== "COMPLETED") {
       setShowShiftAlert(true);
       return;
     }
