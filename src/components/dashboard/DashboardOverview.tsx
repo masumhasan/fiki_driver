@@ -479,7 +479,7 @@ function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
     ? new Date(todayShift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: CENTRAL_TZ })
     : "—";
 
-  const todayScheduleDisplay = todayShift?.todayScheduleHours || "8:00 AM – 4:00 PM";
+  const todayScheduleDisplay = todayShift?.todayScheduleHours || "Day Off";
 
   const formatHoursSeconds = (totalSec: number) => {
     if (totalSec <= 0) return "0h 00m 00s";
@@ -794,10 +794,18 @@ export function DashboardOverview() {
               }
             }),
             getTodayShiftApi(token).then((res) => {
-              if (res.success && res.data && res.data.shift) {
-                setShiftStatus(res.data.shift.status);
-                setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
-                setTodayShift(res.data.shift);
+              if (res.success && res.data) {
+                if (res.data.shift && res.data.shift.status) {
+                  setShiftStatus(res.data.shift.status);
+                  setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
+                } else {
+                  setShiftStatus(null);
+                  setShiftFuel(null);
+                }
+                setTodayShift({
+                  ...(res.data.shift || {}),
+                  todayScheduleHours: res.data.todayScheduleHours || res.data.shift?.todayScheduleHours || res.data.todaySchedule?.hoursText || "Day Off",
+                });
               } else {
                 setShiftStatus(null);
                 setShiftFuel(null);
