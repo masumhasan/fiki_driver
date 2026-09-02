@@ -392,7 +392,7 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
 
         <div className="grid grid-cols-2 gap-2 border-t border-border bg-card p-3 sm:flex sm:justify-end">
           <Link
-            href={`/ride-details?id=${(trip as any).rawId || trip.id}`}
+            href="/ride-details"
             className="col-span-2 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:col-auto sm:mr-auto"
           >
             View details

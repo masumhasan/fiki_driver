@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { getDriverSession } from "@/lib/auth";
 import {
-  getDriverTripsApi,
+  getDriverActiveTripApi,
   getDriverTripByIdApi,
   updateDriverTripStatusApi,
   updateDriverTripNotesApi,
@@ -798,29 +798,15 @@ export function RideDetailsOverview() {
       }
     });
 
-    const queryId = new URLSearchParams(window.location.search).get("id");
-
     try {
-      if (queryId) {
-        const res = await getDriverTripByIdApi(token, queryId);
-        if (res.success && res.data) {
-          setTrip(res.data);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const res = await getDriverTripsApi(token);
-      if (
-        res.success &&
-        res.data &&
-        Array.isArray(res.data.trips) &&
-        res.data.trips.length > 0
-      ) {
-        setTrip(res.data.trips[0]);
+      const res = await getDriverActiveTripApi(token);
+      if (res.success && res.data) {
+        setTrip(res.data);
+      } else {
+        setTrip(null);
       }
     } catch {
-      // error handling fallback
+      setTrip(null);
     } finally {
       setLoading(false);
     }
@@ -999,10 +985,10 @@ export function RideDetailsOverview() {
       <section className="mx-auto w-full max-w-6xl p-10 text-center">
         <div className="rounded-2xl border border-border bg-card p-10 shadow-sm">
           <p className="text-base font-bold text-foreground">
-            No Ride Details Available
+            No Active Ride
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            You currently have no active or scheduled rides assigned.
+            Please start a ride from your dashboard to view its details here.
           </p>
           <Link
             href="/dashboard"

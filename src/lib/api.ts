@@ -96,6 +96,17 @@ export async function getDriverTripsApi(token: string, status?: string, page = 1
   }
 }
 
+export async function getDriverActiveTripApi(token: string) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/drivers/me/trips/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch active trip" } };
+  }
+}
+
 export async function getDriverTripByIdApi(token: string, tripId: string) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}`, {
