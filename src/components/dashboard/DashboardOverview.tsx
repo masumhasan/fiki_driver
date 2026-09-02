@@ -775,7 +775,6 @@ export function DashboardOverview() {
   const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
   const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "completed" | "missed">("today");
-  const [backendTodayTripsCount, setBackendTodayTripsCount] = useState<number | null>(null);
 
   const fetchTrips = () => {
     setLoading(true);
@@ -814,9 +813,8 @@ export function DashboardOverview() {
             }),
             getDriverTripsApi(token).then((res) => {
               if (res.success && res.data && Array.isArray(res.data.trips)) {
-                if (typeof res.data.todayTripsCount === "number") {
-                  setBackendTodayTripsCount(res.data.todayTripsCount);
-                }
+                // Removed backendTodayTripsCount parsing as it relies on inaccurate backend counting
+
 
                 const now = new Date();
                 const todayDayFull = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: CENTRAL_TZ }).format(now);
@@ -1037,9 +1035,7 @@ export function DashboardOverview() {
   const nextPickup = todayTrips.length > 0 ? todayTrips[0] : (upcomingTrips.length > 0 ? upcomingTrips[0] : null);
 
   const localTodayCount = activeTripList.filter((t) => t.isToday).length;
-  const todayTripsCount = backendTodayTripsCount !== null && backendTodayTripsCount > 0
-    ? backendTodayTripsCount
-    : localTodayCount;
+  const todayTripsCount = localTodayCount;
 
   const dynamicSummaryItems: SummaryItem[] = [
     {
