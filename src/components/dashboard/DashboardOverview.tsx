@@ -390,10 +390,10 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-border bg-card p-3 sm:flex sm:justify-end">
+        <div className="flex flex-col gap-2 border-t border-border bg-card p-3 sm:flex-row sm:justify-end">
           <Link
             href={`/ride-details?id=${(trip as any).rawId}`}
-            className="col-span-2 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:col-auto sm:mr-auto"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:mr-auto"
           >
             View details
             <ArrowRight aria-hidden="true" className="size-3.5" />
@@ -403,7 +403,7 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
             <button
               type="button"
               onClick={() => (trip as any).onStatusChange?.((trip as any).rawId, (trip as any).nextStatus)}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/90"
+              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/90 sm:w-auto"
             >
               {(trip as any).nextActionLabel}
             </button>
@@ -412,14 +412,14 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
             href={trip.mapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/20 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto"
           >
             <Navigation aria-hidden="true" className="size-3.5" />
             Maps
           </a>
           <a
             href="tel:+18003454825"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-brand-success/25 px-3 text-xs font-semibold text-brand-success transition-colors hover:bg-brand-success/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-brand-success/25 px-3 text-xs font-semibold text-brand-success transition-colors hover:bg-brand-success/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto"
           >
             <Phone aria-hidden="true" className="size-3.5" />
             Call
@@ -496,7 +496,7 @@ function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <PanelHeader icon={Timer} title="Working hours" />
       <div className="p-4">
-        <dl className="grid grid-cols-2 gap-2">
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="rounded-xl bg-muted p-3">
             <dt className="text-[0.68rem] text-muted-foreground">Clock in</dt>
             <dd className="mt-1 text-sm font-semibold text-foreground">
@@ -1077,7 +1077,7 @@ export function DashboardOverview() {
       </div>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <section aria-labelledby="schedule-title">
+        <section aria-labelledby="schedule-title" className="min-w-0">
           <div className="mb-4">
             <h2
               id="schedule-title"
