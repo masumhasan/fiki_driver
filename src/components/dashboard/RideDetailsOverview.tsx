@@ -123,9 +123,6 @@ function DetailGrid({
 
 function LocationCard({
   address,
-  contactName,
-  contactPhone,
-  contactLabel,
   instructions,
   title,
   type,
@@ -135,9 +132,6 @@ function LocationCard({
 }: {
   address: string;
   city?: string;
-  contactName: string;
-  contactPhone: string;
-  contactLabel: string;
   facility?: string;
   instructions?: string;
   title: string;
@@ -188,26 +182,7 @@ function LocationCard({
           </div>
         )}
 
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="text-[0.68rem] font-medium text-muted-foreground">
-            {contactLabel}
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-foreground">
-            <span className="font-semibold">{contactName}</span>
-            {contactName && contactPhone && <span>·</span>}
-            {contactPhone ? (
-              <a
-                href={`tel:${contactPhone.replace(/[^\d+]/g, "")}`}
-                className="inline-flex items-center gap-1.5 text-primary transition-colors hover:text-foreground"
-              >
-                <Phone aria-hidden="true" className="size-3.5" />
-                <span>{contactPhone}</span>
-              </a>
-            ) : (
-              <span>—</span>
-            )}
-          </div>
-        </div>
+
         {actionText && (
           <button
             type="button"
@@ -1245,9 +1220,7 @@ export function RideDetailsOverview() {
             trip.accessInformation ||
             "Call upon arrival. Use the main entrance on the west side."
           }
-          contactLabel="Pickup contact"
-          contactName="Front Desk"
-          contactPhone={passengerPhone}
+
           actionText={pickupActionText}
           onAction={() => handleStatusChange(pickupActionNext)}
         />
@@ -1255,13 +1228,7 @@ export function RideDetailsOverview() {
           type="dropoff"
           title="Drop-off information"
           address={dropoffAddress}
-          contactLabel="Destination contact"
-          contactName={
-            trip.emergencyContactPhone
-              ? trip.emergencyContactName || "Admissions"
-              : "Admissions"
-          }
-          contactPhone={trip.emergencyContactPhone || "(305) 555-0140"}
+
           actionText={dropoffActionText}
           onAction={() => handleStatusChange(dropoffActionNext)}
         />
