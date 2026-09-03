@@ -61,6 +61,8 @@ type Trip = {
   pickup: string;
   dropoff: string;
   mapsUrl: string;
+  avatarUrl?: string;
+  scheduleType?: string;
 };
 
 const CENTRAL_TZ = "America/Chicago";
@@ -357,6 +359,11 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
               <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[0.68rem] font-medium text-muted-foreground">
                 {trip.rideType}
               </span>
+              {trip.scheduleType && (
+                <span className="rounded-full border border-border bg-primary/5 px-2.5 py-1 text-[0.68rem] font-medium text-primary">
+                  {trip.scheduleType}
+                </span>
+              )}
               <span className="ml-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                 {trip.date}
               </span>
@@ -369,10 +376,18 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary/18 text-xs font-bold text-secondary-foreground">
-              {trip.initials}
-            </span>
+            <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
+              {trip.avatarUrl ? (
+                <img
+                  src={trip.avatarUrl}
+                  alt={trip.passenger}
+                  className="size-9 shrink-0 rounded-xl object-cover border border-border"
+                />
+              ) : (
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary/18 text-xs font-bold text-secondary-foreground">
+                  {trip.initials}
+                </span>
+              )}
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">
                 {trip.passenger}
@@ -903,6 +918,8 @@ export function DashboardOverview() {
                     isToday: isTripToday(outboundInfo.rawDate),
                     passenger: passengerName,
                     initials,
+                    avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
+                    scheduleType: isRecurring ? "Recurring" : "One-Time",
                     mobility,
                     pickup: t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location",
                     dropoff: t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location",
@@ -928,6 +945,8 @@ export function DashboardOverview() {
                       isToday: isTripToday(returnInfo.rawDate),
                       passenger: passengerName,
                       initials,
+                      avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
+                      scheduleType: isRecurring ? "Recurring" : "One-Time",
                       mobility,
                       pickup: t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup",
                       dropoff: t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination",

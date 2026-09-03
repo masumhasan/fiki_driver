@@ -102,8 +102,8 @@ function DetailGrid({
           </dt>
           <dd className="mt-1 text-xs font-semibold leading-5 text-foreground">
             {detail.label === "Phone number" &&
-            detail.value &&
-            detail.value !== "—" ? (
+              detail.value &&
+              detail.value !== "—" ? (
               <a
                 href={`tel:${detail.value.replace(/[^\d+]/g, "")}`}
                 className="inline-flex items-center gap-1.5 text-primary transition-colors hover:text-foreground"
@@ -368,11 +368,11 @@ function TripStatusPanel({
                     className={cn(
                       "grid size-6 place-items-center rounded-full border",
                       isComplete &&
-                        "border-brand-success bg-brand-success text-primary-foreground",
+                      "border-brand-success bg-brand-success text-primary-foreground",
                       isCurrent &&
-                        "border-secondary bg-secondary text-secondary-foreground",
+                      "border-secondary bg-secondary text-secondary-foreground",
                       step.state === "upcoming" &&
-                        "border-border bg-card text-muted-foreground",
+                      "border-border bg-card text-muted-foreground",
                     )}
                   >
                     {isComplete ? (
@@ -1021,18 +1021,18 @@ export function RideDetailsOverview() {
   const rawDate = trip.pickupDate || trip.startDate || trip.createdAt;
   const pickupDateStr = rawDate
     ? (/^\d{4}-\d{2}-\d{2}$/.test(String(rawDate).trim())
-        ? new Date(String(rawDate).trim() + "T00:00:00").toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            timeZone: "America/Chicago",
-          })
-        : new Date(rawDate).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            timeZone: "America/Chicago",
-          }))
+      ? new Date(String(rawDate).trim() + "T00:00:00").toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "America/Chicago",
+      })
+      : new Date(rawDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "America/Chicago",
+      }))
     : "—";
   const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "8:00 AM";
   const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : "8:45 AM";
@@ -1089,8 +1089,7 @@ export function RideDetailsOverview() {
   const tripDetailsList: DetailItem[] = [
     { label: "Assigned driver", value: driverName },
     { label: "Assigned vehicle", value: vehicleStr },
-    { label: "Trip distance", value: "3.2 mi" },
-    { label: "Estimated duration", value: "18 min" },
+
     { label: "Recurring schedule", value: trip.schedule || "One-time trip" },
   ];
 
@@ -1149,7 +1148,7 @@ export function RideDetailsOverview() {
       <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-[0_6px_22px_rgba(8,37,82,0.05)] sm:p-5">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3.5">
-            <button 
+            <button
               className={`grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary/20 text-sm font-bold text-secondary-foreground overflow-hidden ${passengerAvatarUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
               onClick={() => {
                 if (passengerAvatarUrl) setAvatarModalOpen(true);
@@ -1326,7 +1325,7 @@ export function RideDetailsOverview() {
       {avatarModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setAvatarModalOpen(false)}>
           <div className="relative max-w-2xl max-h-[90vh] rounded-xl bg-white shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <button 
+            <button
               className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-black shadow hover:bg-white"
               onClick={() => setAvatarModalOpen(false)}
             >
