@@ -392,7 +392,7 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
 
         <div className="grid grid-cols-2 gap-2 border-t border-border bg-card p-3 sm:flex sm:justify-end">
           <Link
-            href="/ride-details"
+            href={`/ride-details?id=${(trip as any).rawId}`}
             className="col-span-2 inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:col-auto sm:mr-auto"
           >
             View details
@@ -775,6 +775,9 @@ export function DashboardOverview() {
   const [todayShift, setTodayShift] = useState<any>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
   const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "completed" | "missed">("today");
+  const [pages, setPages] = useState({ today: 1, upcoming: 1, completed: 1, missed: 1 });
+  const [totalPages, setTotalPages] = useState({ today: 1, upcoming: 1, completed: 1, missed: 1 });
+  const [tabCounts, setTabCounts] = useState({ today: 0, upcoming: 0, completed: 0, missed: 0 });
 
   const fetchTrips = () => {
     setLoading(true);
@@ -811,9 +814,14 @@ export function DashboardOverview() {
                 setTodayShift(null);
               }
             }),
-            getDriverTripsApi(token).then((res) => {
+            getDriverTripsApi(token, activeTab, pages[activeTab], 10).then((res) => {
               if (res.success && res.data && Array.isArray(res.data.trips)) {
-                // Removed backendTodayTripsCount parsing as it relies on inaccurate backend counting
+                if (res.data.counts) {
+                  setTabCounts(res.data.counts);
+                }
+                if (res.data.pagination) {
+                  setTotalPages((prev) => ({ ...prev, [activeTab]: res.data.pagination.totalPages }));
+                }
 
 
                 const now = new Date();
@@ -959,7 +967,7 @@ export function DashboardOverview() {
     }, 60000);
     
     return () => clearInterval(interval);
-  }, [currentDateStr]);
+  }, [currentDateStr, activeTab, pages[activeTab]]);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
     // Block only if shift was never started (null). Allow both IN_PROGRESS and COMPLETED
@@ -1011,31 +1019,13 @@ export function DashboardOverview() {
     };
   });
 
-  // Separate into Today's Trips, Upcoming Trips (future days), Completed, and Missed
-  const todayTrips = activeTripList
-    .filter((t) => t.status !== "completed" && t.status !== "missed" && t.isToday)
-    .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
-
-  const upcomingTrips = activeTripList
-    .filter((t) => t.status !== "completed" && t.status !== "missed" && !t.isToday && (t.rawDate ? t.rawDate > todayCentralStr : true))
-    .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
-
-  const completedTrips = activeTripList
-    .filter((t) => t.status === "completed")
-    .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
-
-  const missedTrips = activeTripList
-    .filter((t) => t.status === "missed")
-    .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
-
-  const todayCount = todayTrips.length;
-  const upcomingCount = upcomingTrips.length;
-  const completedCount = completedTrips.length;
-  const missedCount = missedTrips.length;
-  const nextPickup = todayTrips.length > 0 ? todayTrips[0] : (upcomingTrips.length > 0 ? upcomingTrips[0] : null);
-
-  const localTodayCount = activeTripList.filter((t) => t.isToday).length;
-  const todayTripsCount = localTodayCount;
+  const todayCount = tabCounts.today || 0;
+  const upcomingCount = tabCounts.upcoming || 0;
+  const completedCount = tabCounts.completed || 0;
+  const missedCount = tabCounts.missed || 0;
+  const nextPickup = activeTab === "today" ? (activeTripList.length > 0 ? activeTripList[0] : null) : null;
+  const todayTripsCount = tabCounts.today || 0;
+  const totalCountForDistance = activeTab === "today" ? todayTripsCount : activeTripList.length;
 
   const dynamicSummaryItems: SummaryItem[] = [
     {
@@ -1048,7 +1038,7 @@ export function DashboardOverview() {
     {
       label: "Completed",
       value: String(completedCount),
-      detail: activeTripList.length > 0 ? `${Math.round((completedCount / activeTripList.length) * 100)}% of schedule` : "0% of schedule",
+      detail: activeTripList.length > 0 ? `${Math.round((completedCount / (completedCount > 0 ? completedCount : 1)) * 100)}% of schedule` : "0% of schedule",
       icon: CheckCircle2,
       tone: "success",
     },
@@ -1061,21 +1051,14 @@ export function DashboardOverview() {
     },
     {
       label: "Total distance",
-      value: `${((todayTripsCount > 0 ? todayTripsCount : activeTripList.length) * 4.5).toFixed(1)} mi`,
-      detail: `Est. ${(todayTripsCount > 0 ? todayTripsCount : activeTripList.length) * 15} min driving`,
+      value: `${(totalCountForDistance * 4.5).toFixed(1)} mi`,
+      detail: `Est. ${totalCountForDistance * 15} min driving`,
       icon: Route,
       tone: "primary",
     },
   ];
 
-  const displayedList =
-    activeTab === "today"
-      ? todayTrips
-      : activeTab === "upcoming"
-        ? upcomingTrips
-        : activeTab === "completed"
-          ? completedTrips
-          : missedTrips;
+  const displayedList = activeTripList;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -1214,6 +1197,29 @@ export function DashboardOverview() {
               ))
             )}
           </div>
+          {totalPages[activeTab] > 1 && (
+            <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+              <button
+                type="button"
+                disabled={pages[activeTab] <= 1 || loading}
+                onClick={() => setPages((p) => ({ ...p, [activeTab]: p[activeTab] - 1 }))}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm font-medium text-muted-foreground">
+                Page {pages[activeTab]} of {totalPages[activeTab]}
+              </span>
+              <button
+                type="button"
+                disabled={pages[activeTab] >= totalPages[activeTab] || loading}
+                onClick={() => setPages((p) => ({ ...p, [activeTab]: p[activeTab] + 1 }))}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </section>
 
         <aside aria-label="Daily information" className="space-y-3">

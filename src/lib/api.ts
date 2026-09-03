@@ -83,10 +83,10 @@ export async function updateDriverLocationApi(token: string, latitude: number, l
   }
 }
 
-export async function getDriverTripsApi(token: string, status?: string, page = 1, limit = 1000) {
+export async function getDriverTripsApi(token: string, tab?: string, page = 1, limit = 10) {
   try {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (status) params.append("status", status);
+    if (tab) params.append("tab", tab);
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });

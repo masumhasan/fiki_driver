@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { getDriverSession } from "@/lib/auth";
 import {
   getDriverActiveTripApi,
@@ -774,6 +775,9 @@ function HandToHandSignatureModal({
 }
 
 export function RideDetailsOverview() {
+  const searchParams = useSearchParams();
+  const tripIdParam = searchParams.get("id");
+
   const [trip, setTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -799,7 +803,12 @@ export function RideDetailsOverview() {
     });
 
     try {
-      const res = await getDriverActiveTripApi(token);
+      let res;
+      if (tripIdParam) {
+        res = await getDriverTripByIdApi(token, tripIdParam);
+      } else {
+        res = await getDriverActiveTripApi(token);
+      }
       if (res.success && res.data) {
         setTrip(res.data);
       } else {
@@ -814,7 +823,7 @@ export function RideDetailsOverview() {
 
   useEffect(() => {
     fetchTrip();
-  }, []);
+  }, [tripIdParam]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!trip) return;
