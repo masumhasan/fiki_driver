@@ -937,6 +937,7 @@ export function DashboardOverview() {
                     });
                   }
                 });
+                mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
                 setLiveTrips(mappedList);
               } else {
                 setLiveTrips([]);

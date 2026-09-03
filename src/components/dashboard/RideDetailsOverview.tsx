@@ -784,6 +784,7 @@ export function RideDetailsOverview() {
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
   const fetchTrip = async () => {
     if (typeof window === "undefined") return;
@@ -1017,6 +1018,7 @@ export function RideDetailsOverview() {
   const cleanPassengerPhone = passengerPhone
     ? passengerPhone.replace(/[^\d+]/g, "")
     : "";
+  const passengerAvatarUrl = trip.passengerAvatarUrl || trip.passengerId?.avatarUrl;
   const passengerInitials =
     passengerName
       .split(" ")
@@ -1172,9 +1174,18 @@ export function RideDetailsOverview() {
       <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-[0_6px_22px_rgba(8,37,82,0.05)] sm:p-5">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3.5">
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary/20 text-sm font-bold text-secondary-foreground">
-              {passengerInitials}
-            </span>
+            <button 
+              className={`grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary/20 text-sm font-bold text-secondary-foreground overflow-hidden ${passengerAvatarUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+              onClick={() => {
+                if (passengerAvatarUrl) setAvatarModalOpen(true);
+              }}
+            >
+              {passengerAvatarUrl ? (
+                <img src={passengerAvatarUrl} alt="Passenger Avatar" className="w-full h-full object-cover" />
+              ) : (
+                passengerInitials
+              )}
+            </button>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold tracking-tight text-foreground">
                 {passengerName}
@@ -1343,6 +1354,21 @@ export function RideDetailsOverview() {
         onClose={() => setShowSignatureModal(false)}
         onConfirm={handleConfirmHandToHand}
       />
+
+      {/* Avatar Modal */}
+      {avatarModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setAvatarModalOpen(false)}>
+          <div className="relative max-w-2xl max-h-[90vh] rounded-xl bg-white shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button 
+              className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-black shadow hover:bg-white"
+              onClick={() => setAvatarModalOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img src={passengerAvatarUrl} alt="Passenger Full" className="w-full h-auto max-h-[90vh] object-contain" />
+          </div>
+        </div>
+      )}
     </section>
   );
 }
