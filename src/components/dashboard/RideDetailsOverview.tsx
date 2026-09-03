@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { getDriverSession } from "@/lib/auth";
+import { uploadBase64Image } from "@/lib/uploadBase64";
 import {
   getDriverActiveTripApi,
   getDriverTripByIdApi,
@@ -834,11 +835,17 @@ export function RideDetailsOverview() {
     const session = getDriverSession();
     const token = session?.token;
     if (!token) return;
+
+    let finalData = { ...data };
+    if (finalData.receiverSignature && finalData.receiverSignature.startsWith("data:image/")) {
+      finalData.receiverSignature = await uploadBase64Image(finalData.receiverSignature, "signatures", token);
+    }
+
     const res = await updateDriverTripStatusApi(
       token,
       trip._id,
       "COMPLETED",
-      data,
+      finalData,
     );
     if (res.success) {
       setShowSignatureModal(false);
