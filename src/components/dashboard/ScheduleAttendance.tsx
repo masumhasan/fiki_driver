@@ -113,7 +113,16 @@ export function ScheduleAttendance() {
   const [summaryData, setSummaryData] = useState<{
     tripSummary: { totalTrips: number; completed: number; inProgress: number; remaining: number };
     upcomingSchedule: Array<{ day: string; date: string; hours: string; status: string }>;
-    weeklySchedule: Array<{ day: string; date: string; shiftHours: string; total: string; attendance: string; approval: string }>;
+    weeklySchedule: Array<{
+      day: string;
+      date: string;
+      dateStr?: string;
+      shiftSchedule: string;
+      shiftLogs: string;
+      shiftHours?: string;
+      total: string;
+      attendance: string;
+    }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
@@ -547,10 +556,10 @@ export function ScheduleAttendance() {
               <tr>
                 <th className="px-5 py-3 font-semibold">Day</th>
                 <th className="px-5 py-3 font-semibold">Date</th>
-                <th className="px-5 py-3 font-semibold">Shift Hours</th>
+                <th className="px-5 py-3 font-semibold">Shift Schedules</th>
+                <th className="px-5 py-3 font-semibold">Shift Logs</th>
                 <th className="px-5 py-3 font-semibold">Total</th>
                 <th className="px-5 py-3 font-semibold">Attendance</th>
-                <th className="px-5 py-3 font-semibold">Approval</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-medium">
@@ -565,7 +574,8 @@ export function ScheduleAttendance() {
                   <tr key={row.day + idx} className="hover:bg-muted/40">
                     <td className="px-5 py-3.5 font-bold text-foreground">{row.day}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{row.date}</td>
-                    <td className="px-5 py-3.5 text-foreground">{row.shiftHours}</td>
+                    <td className="px-5 py-3.5 text-foreground">{row.shiftSchedule || "Day Off"}</td>
+                    <td className="px-5 py-3.5 text-foreground">{row.shiftLogs || row.shiftHours || "—"}</td>
                     <td className="px-5 py-3.5 text-foreground">{row.total}</td>
                     <td className="px-5 py-3.5">
                       <span
@@ -574,29 +584,17 @@ export function ScheduleAttendance() {
                           row.attendance === "Present"
                             ? "bg-emerald-100 border-emerald-300 text-emerald-800"
                             : row.attendance === "Late"
-                              ? "bg-amber-100 border-amber-300 text-amber-800"
+                              ? "bg-orange-100 border-orange-300 text-orange-800"
                               : row.attendance === "Absent"
                                 ? "bg-rose-100 border-rose-300 text-rose-800"
                                 : row.attendance === "In Progress"
                                   ? "bg-blue-100 border-blue-300 text-blue-800"
-                                  : row.attendance === "Off"
+                                  : row.attendance === "Day Off" || row.attendance === "Off"
                                     ? "bg-slate-100 border-slate-200 text-slate-600"
-                                    : "bg-amber-50 border-amber-200 text-amber-700",
+                                    : "bg-amber-100 border-amber-300 text-amber-800",
                         )}
                       >
                         {row.attendance}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={cn(
-                          "inline-block rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
-                          row.approval === "Approved"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {row.approval}
                       </span>
                     </td>
                   </tr>
