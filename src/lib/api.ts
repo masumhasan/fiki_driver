@@ -240,7 +240,7 @@ export async function endShiftApi(
   }
 }
 
-export async function uploadImageApi(token: string, file: File, category = "avatars") {
+export async function uploadImageApi(token: string, file: File, category = "shift-odometers") {
   try {
     const formData = new FormData();
     formData.append("image", file);
@@ -250,10 +250,29 @@ export async function uploadImageApi(token: string, file: File, category = "avat
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
-    return await res.json();
-  } catch {
-    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to upload image" } };
+    const data = await res.json();
+    if (data.success && data.data?.url) {
+      return data;
+    }
+    console.warn("Multipart upload returned non-success, attempting base64 fallback...", data);
+  } catch (error) {
+    console.warn("Multipart upload request failed, attempting base64 fallback...", error);
   }
+
+  // Robust Fallback: Base64 JSON payload
+  try {
+    const { fileToBase64 } = await import("./imageUtils");
+    const { uploadBase64Image } = await import("./uploadBase64");
+    const base64Data = await fileToBase64(file);
+    const url = await uploadBase64Image(base64Data, category, token);
+    if (url) {
+      return { success: true, data: { url } };
+    }
+  } catch (fallbackError) {
+    console.error("Base64 upload fallback failed:", fallbackError);
+  }
+
+  return { success: false, error: { code: "UPLOAD_FAILED", message: "Failed to upload image" } };
 }
 
 

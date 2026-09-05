@@ -11,6 +11,7 @@ import {
   CircleGauge,
   Fuel,
   ImagePlus,
+  Images,
   Info,
   LockKeyhole,
   MessageCircle,
@@ -96,7 +97,8 @@ export function ShiftForm({
   pendingReportShift?: any
 }) {
   const uploadId = useId()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const isStart = mode === 'start'
   
   const initialOdo = isStart
@@ -136,31 +138,43 @@ export function ShiftForm({
       : '42.6'
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) return
+    const rawFiles = Array.from(event.target.files || [])
+    if (rawFiles.length === 0) return
     setError('')
     setUploadingPhoto(true)
 
     const token = session?.token
     if (token) {
       const { uploadImageApi } = await import('@/lib/api')
+      const { compressImage } = await import('@/lib/imageUtils')
       const uploadedList: Array<{ name: string; url: string }> = []
 
-      for (const file of files) {
-        const res = await uploadImageApi(token, file)
-        if (res.success && res.data?.url) {
-          uploadedList.push({ name: file.name, url: res.data.url })
+      for (const file of rawFiles) {
+        try {
+          // Compress image client-side to max 1920px JPEG (transforms 20MB iPhone camera shots into ~300KB JPEGs)
+          const compressed = await compressImage(file)
+          const res = await uploadImageApi(token, compressed, 'shift-odometers')
+          if (res.success && res.data?.url) {
+            uploadedList.push({ name: file.name, url: res.data.url })
+          } else {
+            console.error('Failed to upload vehicle photo:', file.name, res.error)
+          }
+        } catch (err) {
+          console.error('Error processing vehicle photo:', file.name, err)
         }
       }
 
       if (uploadedList.length > 0) {
         setPhotos((prev) => [...prev, ...uploadedList])
       } else {
-        setError('Failed to upload vehicle photos to S3.')
+        setError('Failed to upload vehicle photos to S3. Please try again.')
       }
+    } else {
+      setError('Authentication required to upload photos.')
     }
     setUploadingPhoto(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
+    if (galleryInputRef.current) galleryInputRef.current.value = ''
   }
 
   function removePhoto(index: number) {
@@ -291,16 +305,38 @@ export function ShiftForm({
 
             <section className="rounded-xl border border-border bg-muted/45 p-4 sm:min-h-60 sm:p-5">
               <SectionTitle icon={Camera}>Vehicle Photos</SectionTitle>
+              {/* Native Mobile Camera Input */}
               <input
-                ref={fileInputRef}
-                id={uploadId}
+                ref={cameraInputRef}
+                id={`${uploadId}-camera`}
                 type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/*"
+                capture="environment"
                 className="sr-only"
                 onChange={handleFileChange}
               />
-              {photos.length > 0 ? (
+              {/* Gallery / Photo Library Input */}
+              <input
+                ref={galleryInputRef}
+                id={`${uploadId}-gallery`}
+                type="file"
+                multiple
+                accept="image/*"
+                className="sr-only"
+                onChange={handleFileChange}
+              />
+
+              {uploadingPhoto ? (
+                <div className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-400 bg-card p-4 text-center shadow-sm">
+                  <Loader2 className="size-8 animate-spin text-blue-600" />
+                  <span className="mt-3 text-sm font-semibold text-blue-600">
+                    Optimizing & uploading to S3...
+                  </span>
+                  <span className="mt-1 text-xs text-muted-foreground">
+                    Converting photo for instant upload
+                  </span>
+                </div>
+              ) : photos.length > 0 ? (
                 <div className="mt-3 space-y-2.5">
                   <div className="grid grid-cols-3 gap-2">
                     {photos.map((p, idx) => (
@@ -319,58 +355,82 @@ export function ShiftForm({
                     {photos.length < 6 && (
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => cameraInputRef.current?.click()}
                         disabled={uploadingPhoto}
-                        className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-400/60 bg-card text-center transition-colors hover:border-blue-600 hover:bg-blue-50/50 disabled:opacity-50"
+                        className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-400/60 bg-blue-50/40 text-center transition-colors hover:border-blue-600 hover:bg-blue-100/50 disabled:opacity-50"
+                        title="Take photo with camera"
                       >
-                        {uploadingPhoto ? (
-                          <Loader2 className="size-5 animate-spin text-blue-600" />
-                        ) : (
-                          <>
-                            <ImagePlus className="size-5 text-blue-600" />
-                            <span className="mt-1 text-[0.65rem] font-bold text-blue-600">+ Add photo</span>
-                          </>
-                        )}
+                        <Camera className="size-4 text-blue-600" />
+                        <span className="mt-1 text-[0.65rem] font-bold text-blue-700">+ Camera</span>
+                      </button>
+                    )}
+                    {photos.length < 6 && (
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        disabled={uploadingPhoto}
+                        className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-card text-center transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+                        title="Upload from gallery"
+                      >
+                        <Images className="size-4 text-slate-600" />
+                        <span className="mt-1 text-[0.65rem] font-bold text-slate-700">+ Gallery</span>
                       </button>
                     )}
                   </div>
                   <div className="flex items-center justify-between text-[0.7rem] text-muted-foreground">
                     <span className="font-semibold text-emerald-600">✓ {photos.length} photo{photos.length > 1 ? 's' : ''} uploaded to S3</span>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="font-bold text-blue-600 hover:underline"
-                    >
-                      + Add more
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <Camera className="size-3" /> Camera
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="font-bold text-slate-700 hover:underline flex items-center gap-1"
+                      >
+                        <Images className="size-3" /> Gallery
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="mt-3 flex min-h-36 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand-soft bg-card px-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-70"
-                >
-                  {uploadingPhoto ? (
-                    <>
-                      <Loader2 className="size-8 animate-spin text-blue-600" />
-                      <span className="mt-3 text-sm font-semibold text-blue-600">
-                        Uploading photo(s) to S3...
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <ImagePlus className="size-8 text-blue-600" />
-                      <span className="mt-2 text-sm font-semibold text-blue-600">
-                        Take Photo(s) or Upload
-                      </span>
-                      <span className="mt-1 text-xs text-muted-foreground">
-                        Select multiple (Odometer, Front, Rear, Damage)
-                      </span>
-                    </>
-                  )}
-                </button>
+                <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      disabled={uploadingPhoto}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-400/80 bg-blue-50/50 p-4 text-center transition-all hover:border-blue-600 hover:bg-blue-100/50 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      <div className="grid size-9 place-items-center rounded-full bg-blue-100 text-blue-600">
+                        <Camera className="size-5" />
+                      </div>
+                      <span className="text-xs font-bold text-blue-700">Take Photo</span>
+                      <span className="text-[0.65rem] text-blue-600/80">Camera capture</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      disabled={uploadingPhoto}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-card p-4 text-center transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      <div className="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-600">
+                        <Images className="size-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">From Gallery</span>
+                      <span className="text-[0.65rem] text-muted-foreground">Upload existing</span>
+                    </button>
+                  </div>
+                  <p className="rounded-lg bg-card/80 px-3 py-1.5 text-center text-[0.68rem] text-muted-foreground border border-border/60">
+                    Odometer, front, rear, or any damage photos (auto-optimized for upload)
+                  </p>
+                </div>
               )}
             </section>
           </div>
