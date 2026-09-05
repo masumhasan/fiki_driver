@@ -10,11 +10,9 @@ import {
   CarFront,
   CheckCircle2,
   Clock3,
-  ExternalLink,
   Fuel,
   Gauge,
   type LucideIcon,
-  MapPin,
   Navigation,
   Phone,
   PhoneCall,
@@ -316,6 +314,18 @@ function LocationRow({
 function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: number; isLastItem?: boolean }) {
   const status = tripStatusStyles[trip.status];
 
+  // When passenger is picked up (e.g. status is IN_PROGRESS / next action is "Complete Drop-off"),
+  // the Maps button directs the driver to the drop-off location instead of the pickup location.
+  const isPassengerPickedUp =
+    (trip as any).rawStatus === "IN_PROGRESS" ||
+    (trip as any).nextActionLabel === "Complete Drop-off" ||
+    (trip as any).rawStatus === "COMPLETED";
+
+  const targetMapAddress = isPassengerPickedUp ? trip.dropoff : trip.pickup;
+  const mapsUrl = targetMapAddress
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetMapAddress)}`
+    : trip.mapsUrl;
+
   return (
     <div className="relative pl-11 sm:pl-14">
       <div
@@ -432,9 +442,10 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
             </button>
           )}
           <a
-            href={trip.mapsUrl}
+            href={mapsUrl}
             target="_blank"
             rel="noreferrer"
+            title={isPassengerPickedUp ? `Navigate to drop-off: ${trip.dropoff}` : `Navigate to pickup: ${trip.pickup}`}
             className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto"
           >
             <Navigation aria-hidden="true" className="size-3.5" />
@@ -569,44 +580,6 @@ function WorkingHoursPanel({ todayShift }: { todayShift?: any }) {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-      </div>
-    </section>
-  );
-}
-
-function NextPickupPanel({ nextPickup }: { nextPickup?: Trip | null }) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <PanelHeader icon={MapPin} title="Next pickup" />
-      <div className="p-4">
-        {nextPickup ? (
-          <>
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">{nextPickup.passenger}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {nextPickup.pickup}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-secondary/16 px-2.5 py-1 text-[0.68rem] font-semibold text-secondary-foreground">
-                {nextPickup.time.split("–")[0]?.trim() || nextPickup.time}
-              </span>
-            </div>
-            <a
-              href={nextPickup.mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-brand-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              Open in maps
-              <ExternalLink aria-hidden="true" className="size-3.5" />
-            </a>
-          </>
-        ) : (
-          <div className="py-4 text-center">
-            <p className="text-xs font-semibold text-muted-foreground">No Next Pickup Assigned</p>
-          </div>
-        )}
       </div>
     </section>
   );
@@ -918,6 +891,15 @@ export function DashboardOverview() {
                         ? "Recurring Trip"
                         : (t.tripType || "One way");
 
+                  const pickupAddress = t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location";
+                  const dropoffAddress = t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location";
+                  const isLegPickedUp =
+                    t.status === "IN_PROGRESS" ||
+                    nextActionLabel === "Complete Drop-off" ||
+                    t.status === "COMPLETED";
+
+                  const targetMapAddress = isLegPickedUp ? dropoffAddress : pickupAddress;
+
                   // Outbound / Individual Leg
                   mappedList.push({
                     id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}${t.isReturnLeg ? "-RET" : ""}`,
@@ -937,9 +919,9 @@ export function DashboardOverview() {
                     avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
                     scheduleType: isRecurring ? "Recurring" : "One-Time",
                     mobility,
-                    pickup: t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location",
-                    dropoff: t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location",
-                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.pickupLocation?.address || t.streetAddress || "Pickup")}`,
+                    pickup: pickupAddress,
+                    dropoff: dropoffAddress,
+                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetMapAddress)}`,
                     nextStatus,
                     nextActionLabel,
                   });
@@ -948,6 +930,10 @@ export function DashboardOverview() {
                   if (!isChildLeg && isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
                     const returnInfo = getEffectiveTripDateAndTs(t, true);
                     const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
+                    const returnPickupAddress = t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup";
+                    const returnDropoffAddress = t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination";
+                    const returnTargetMapAddress = isLegPickedUp ? returnDropoffAddress : returnPickupAddress;
+
                     mappedList.push({
                       id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
                       rawId: t._id,
@@ -966,9 +952,9 @@ export function DashboardOverview() {
                       avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
                       scheduleType: isRecurring ? "Recurring" : "One-Time",
                       mobility,
-                      pickup: t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup",
-                      dropoff: t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination",
-                      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.returnPickupAddress || t.dropoffLocation?.address || "Return")}`,
+                      pickup: returnPickupAddress,
+                      dropoff: returnDropoffAddress,
+                      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(returnTargetMapAddress)}`,
                       nextStatus,
                       nextActionLabel,
                     });
@@ -1093,7 +1079,6 @@ export function DashboardOverview() {
   const currentPage = Math.min(pages[activeTab] || 1, totalPagesForTab);
   const paginatedList = displayedList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const nextPickup = todayTrips.length > 0 ? todayTrips[0] : null;
   const totalCountForDistance = todayCount;
 
   const dynamicSummaryItems: SummaryItem[] = [
@@ -1291,7 +1276,6 @@ export function DashboardOverview() {
 
         <aside aria-label="Daily information" className="space-y-3">
           <WorkingHoursPanel todayShift={todayShift} />
-          <NextPickupPanel nextPickup={loading ? undefined : nextPickup} />
           <VehiclePanel vehicle={sessionVehicle} shiftStatus={shiftStatus} shiftFuel={shiftFuel} />
           <EmergencyPanel dispatchNumber={dispatchNumber} />
         </aside>

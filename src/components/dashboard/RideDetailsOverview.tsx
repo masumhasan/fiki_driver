@@ -1044,7 +1044,14 @@ export function RideDetailsOverview() {
   const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "8:00 AM";
   const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : "8:45 AM";
 
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupAddress)}&destination=${encodeURIComponent(dropoffAddress)}`;
+  const isPassengerPickedUp =
+    trip.status === "IN_PROGRESS" ||
+    trip.status === "COMPLETED";
+
+  const targetMapAddress = isPassengerPickedUp ? dropoffAddress : pickupAddress;
+  const mapsUrl = targetMapAddress
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetMapAddress)}`
+    : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupAddress)}&destination=${encodeURIComponent(dropoffAddress)}`;
 
   // Determine status button & status badge
   let statusBadgeLabel = "In progress";
