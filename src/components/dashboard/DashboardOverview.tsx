@@ -12,12 +12,11 @@ import {
   Clock3,
   Fuel,
   Gauge,
+  Headset,
   type LucideIcon,
   Navigation,
   Phone,
-  PhoneCall,
   Route,
-  ShieldAlert,
   Timer,
 } from "lucide-react";
 import Link from "next/link";
@@ -656,31 +655,56 @@ function VehiclePanel({
 }
 
 function EmergencyPanel({ dispatchNumber }: { dispatchNumber: string }) {
+  const cleanDispatch = dispatchNumber ? dispatchNumber.replace(/[^\d+]/g, "") : "+18003454825";
+
   return (
-    <section className="rounded-2xl border border-destructive/20 bg-destructive/4 p-4">
-      <a
-        href="tel:911"
-        className="inline-flex items-center gap-2 text-destructive hover:underline focus:outline-none focus:ring-2 focus:ring-destructive/20 rounded-md cursor-pointer transition-colors"
-        title="Call 911 (Emergency)"
-      >
-        <ShieldAlert aria-hidden="true" className="size-4 shrink-0" />
-        <h2 className="text-sm font-semibold">Emergency contact</h2>
-        <PhoneCall aria-hidden="true" className="size-3.5 shrink-0 ml-0.5" />
-        <span className="text-xs font-bold">911</span>
-      </a>
-      <p className="mt-3 text-xs font-semibold text-foreground">
-        FIKI Dispatch
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Available 24 hours, 7 days a week
-      </p>
-      <a
-        href={`tel:${dispatchNumber}`}
-        className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-destructive/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
-      >
-        <Phone aria-hidden="true" className="size-3.5" />
-        Call dispatch
-      </a>
+    <section className="overflow-hidden rounded-2xl sm:rounded-3xl border border-red-200/80 bg-[#fffafa] p-3.5 sm:p-4 shadow-[0_2px_12px_rgba(239,68,68,0.04)]">
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="h-[1.5px] flex-1 bg-red-200/90 rounded-full" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <svg className="size-5 text-[#c91c1c] drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z" />
+            <path d="M11 7h2v3h3v2h-3v3h-2v-3H8v-2h3V7z" fill="white" />
+          </svg>
+          <h2 className="text-base sm:text-[17px] font-bold tracking-tight text-[#0a1e3b]">
+            Emergency
+          </h2>
+        </div>
+        <div className="h-[1.5px] flex-1 bg-red-200/90 rounded-full" />
+      </div>
+
+      <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:gap-3">
+        <a
+          href="tel:911"
+          title="Call 911 (Emergency)"
+          className="group flex flex-col items-center justify-center rounded-xl sm:rounded-2xl border border-red-300/90 bg-white px-2 py-3 sm:px-3 sm:py-3.5 text-center transition-all hover:border-red-500 hover:bg-red-50/30 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="flex size-6 sm:size-7 shrink-0 items-center justify-center rounded-full bg-[#c91c1c] text-white">
+              <Phone className="size-3 sm:size-3.5 fill-white text-white" />
+            </span>
+            <span className="text-lg sm:text-xl font-extrabold tracking-tight text-[#c91c1c]">
+              911
+            </span>
+          </div>
+          <span className="mt-1 text-[11px] sm:text-xs font-medium text-slate-500 group-hover:text-slate-700">
+            Emergency
+          </span>
+        </a>
+
+        <a
+          href={`tel:${cleanDispatch}`}
+          title={dispatchNumber ? `Call Dispatch (${dispatchNumber})` : "Call Dispatch"}
+          className="group flex flex-col items-center justify-center rounded-xl sm:rounded-2xl bg-[#c91c1c] px-2 py-3 sm:px-3 sm:py-3.5 text-center text-white transition-all hover:bg-[#b31818] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+        >
+          <div className="flex size-6 sm:size-7 shrink-0 items-center justify-center rounded-full border border-white/80 text-white">
+            <Headset className="size-3.5 sm:size-4 text-white" />
+          </div>
+          <span className="mt-1 text-xs sm:text-sm font-bold text-white">
+            Call Dispatch
+          </span>
+        </a>
+      </div>
     </section>
   );
 }
