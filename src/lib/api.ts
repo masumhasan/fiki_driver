@@ -83,12 +83,17 @@ export async function updateDriverLocationApi(token: string, latitude: number, l
   }
 }
 
-export async function getDriverTripsApi(token: string, tab?: string, page = 1, limit = 10) {
+export async function getDriverTripsApi(token: string, tab?: string, page = 1, limit = 100) {
   try {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit), _t: String(Date.now()) });
     if (tab) params.append("tab", tab);
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+      cache: "no-store",
     });
     return await res.json();
   } catch {

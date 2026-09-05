@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDriverTripsApi, updateDriverTripStatusApi } from "@/lib/api";
 import {
   Accessibility,
@@ -63,6 +63,8 @@ type Trip = {
   mapsUrl: string;
   avatarUrl?: string;
   scheduleType?: string;
+  passengerPhone?: string;
+  cleanPassengerPhone?: string;
 };
 
 const CENTRAL_TZ = "America/Chicago";
@@ -80,6 +82,12 @@ function getCentralTodayDateStr(date: Date = new Date()): string {
   const day = parts.find((p) => p.type === "day")?.value;
 
   return `${year}-${month}-${day}`;
+}
+
+function getCentralNextDayDateStr(baseDateStr: string = getCentralTodayDateStr()): string {
+  const [y, m, d] = baseDateStr.split("-").map(Number);
+  const nextDay = new Date(Date.UTC(y, m - 1, d + 1, 12, 0, 0));
+  return getCentralTodayDateStr(nextDay);
 }
 
 function formatFullCardDate(dateVal?: string | Date) {
@@ -433,7 +441,14 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
             Maps
           </a>
           <a
-            href="tel:+18003454825"
+            href={trip.cleanPassengerPhone || trip.passengerPhone ? `tel:${trip.cleanPassengerPhone || trip.passengerPhone}` : "#"}
+            onClick={(e) => {
+              if (!trip.cleanPassengerPhone && !trip.passengerPhone) {
+                e.preventDefault();
+                alert("No phone number available for this passenger.");
+              }
+            }}
+            title={trip.passengerPhone ? `Call ${trip.passenger} (${trip.passengerPhone})` : "Call passenger"}
             className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-brand-success/25 px-3 text-xs font-semibold text-brand-success transition-colors hover:bg-brand-success/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto"
           >
             <Phone aria-hidden="true" className="size-3.5" />
@@ -715,8 +730,8 @@ function getEffectiveTripDateAndTs(t: any, isReturnLeg = false): { formattedDate
   const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
 
   const baseDateVal = isReturnLeg
-    ? (t.returnDate || t.endDate || t.startDate || t.pickupDate || t.createdAt)
-    : (t.startDate || t.pickupDate || t.createdAt);
+    ? (t.returnDate || t.endDate || t.pickupDate || t.startDate || t.createdAt)
+    : (t.pickupDate || t.startDate || t.createdAt);
 
   const timeStr = isReturnLeg
     ? (t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup")
@@ -829,13 +844,10 @@ export function DashboardOverview() {
                 setTodayShift(null);
               }
             }),
-            getDriverTripsApi(token, activeTab, pages[activeTab], 10).then((res) => {
+            getDriverTripsApi(token, undefined, 1, 100).then((res) => {
               if (res.success && res.data && Array.isArray(res.data.trips)) {
                 if (res.data.counts) {
                   setTabCounts(res.data.counts);
-                }
-                if (res.data.pagination) {
-                  setTotalPages((prev) => ({ ...prev, [activeTab]: res.data.pagination.totalPages }));
                 }
 
 
@@ -869,6 +881,8 @@ export function DashboardOverview() {
                   }
 
                   const passengerName = t.fullName || t.passengerId?.name || "Passenger";
+                  const passengerPhone = t.phoneNumber || t.passengerId?.phone || t.emergencyContactPhone || "";
+                  const cleanPassengerPhone = passengerPhone ? passengerPhone.replace(/[^\d+]/g, "") : "";
                   const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
                   const mobility = Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard";
 
@@ -917,6 +931,8 @@ export function DashboardOverview() {
                     timestampMs: outboundInfo.timestampMs,
                     isToday: isTripToday(outboundInfo.rawDate),
                     passenger: passengerName,
+                    passengerPhone,
+                    cleanPassengerPhone,
                     initials,
                     avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
                     scheduleType: isRecurring ? "Recurring" : "One-Time",
@@ -944,6 +960,8 @@ export function DashboardOverview() {
                       timestampMs: returnInfo.timestampMs,
                       isToday: isTripToday(returnInfo.rawDate),
                       passenger: passengerName,
+                      passengerPhone,
+                      cleanPassengerPhone,
                       initials,
                       avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
                       scheduleType: isRecurring ? "Recurring" : "One-Time",
@@ -987,7 +1005,7 @@ export function DashboardOverview() {
     }, 60000);
     
     return () => clearInterval(interval);
-  }, [currentDateStr, activeTab, pages[activeTab]]);
+  }, [currentDateStr]);
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
     // Block only if shift was never started (null). Allow both IN_PROGRESS and COMPLETED
@@ -1010,6 +1028,7 @@ export function DashboardOverview() {
   };
 
   const todayCentralStr = currentDateStr;
+  const nextDayCentralStr = getCentralNextDayDateStr(todayCentralStr);
 
   const isLegMissed = (t: any) => {
     // If the backend explicitly flagged it as completed or missed, honour that
@@ -1039,18 +1058,48 @@ export function DashboardOverview() {
     };
   });
 
-  const todayCount = tabCounts.today || 0;
-  const upcomingCount = tabCounts.upcoming || 0;
-  const completedCount = tabCounts.completed || 0;
-  const missedCount = tabCounts.missed || 0;
-  const nextPickup = activeTab === "today" ? (activeTripList.length > 0 ? activeTripList[0] : null) : null;
-  const todayTripsCount = tabCounts.today || 0;
-  const totalCountForDistance = activeTab === "today" ? todayTripsCount : activeTripList.length;
+  const todayTrips = useMemo(
+    () => activeTripList.filter((t: any) => t.rawDate === todayCentralStr && t.status !== "completed" && t.status !== "missed"),
+    [activeTripList, todayCentralStr]
+  );
+  const nextDayTrips = useMemo(
+    () => activeTripList.filter((t: any) => t.rawDate === nextDayCentralStr && t.status !== "completed" && t.status !== "missed"),
+    [activeTripList, nextDayCentralStr]
+  );
+  const completedTrips = useMemo(
+    () => activeTripList.filter((t: any) => t.status === "completed"),
+    [activeTripList]
+  );
+  const missedTrips = useMemo(
+    () => activeTripList.filter((t: any) => t.status === "missed"),
+    [activeTripList]
+  );
+
+  const todayCount = todayTrips.length;
+  const upcomingCount = nextDayTrips.length;
+  const completedCount = Math.max(tabCounts.completed || 0, completedTrips.length);
+  const missedCount = Math.max(tabCounts.missed || 0, missedTrips.length);
+
+  const displayedList = useMemo(() => {
+    if (activeTab === "today") return todayTrips;
+    if (activeTab === "upcoming") return nextDayTrips;
+    if (activeTab === "completed") return completedTrips;
+    if (activeTab === "missed") return missedTrips;
+    return [];
+  }, [activeTab, todayTrips, nextDayTrips, completedTrips, missedTrips]);
+
+  const pageSize = 10;
+  const totalPagesForTab = Math.max(1, Math.ceil(displayedList.length / pageSize));
+  const currentPage = Math.min(pages[activeTab] || 1, totalPagesForTab);
+  const paginatedList = displayedList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const nextPickup = todayTrips.length > 0 ? todayTrips[0] : null;
+  const totalCountForDistance = todayCount;
 
   const dynamicSummaryItems: SummaryItem[] = [
     {
       label: "Today's trips",
-      value: String(todayTripsCount),
+      value: String(todayCount),
       detail: "Daily schedule",
       icon: CalendarDays,
       tone: "primary",
@@ -1058,14 +1107,14 @@ export function DashboardOverview() {
     {
       label: "Completed",
       value: String(completedCount),
-      detail: activeTripList.length > 0 ? `${Math.round((completedCount / (completedCount > 0 ? completedCount : 1)) * 100)}% of schedule` : "0% of schedule",
+      detail: todayCount > 0 ? `${Math.round((completedCount / (completedCount + todayCount)) * 100)}% of schedule` : "0% of schedule",
       icon: CheckCircle2,
       tone: "success",
     },
     {
-      label: "Upcoming",
+      label: "Next Day's Trips",
       value: String(upcomingCount),
-      detail: nextPickup ? `Next at ${nextPickup.time}` : "No upcoming",
+      detail: upcomingCount > 0 ? `${upcomingCount} scheduled tomorrow` : "None tomorrow",
       icon: Clock3,
       tone: "secondary",
     },
@@ -1077,8 +1126,6 @@ export function DashboardOverview() {
       tone: "primary",
     },
   ];
-
-  const displayedList = activeTripList;
 
   return (
     <section aria-labelledby="dashboard-title">
@@ -1133,7 +1180,7 @@ export function DashboardOverview() {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                Upcoming Trips ({upcomingCount})
+                Next Day's Trips ({upcomingCount})
                 {activeTab === "upcoming" && (
                   <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
                 )}
@@ -1191,7 +1238,7 @@ export function DashboardOverview() {
                   {activeTab === "today"
                     ? "No Trips Scheduled For Today"
                     : activeTab === "upcoming"
-                      ? "No Upcoming Trips Scheduled"
+                      ? "No Next Day's Trips Scheduled"
                       : activeTab === "completed"
                         ? "No Completed Trips"
                         : "No Missed Trips"}
@@ -1200,40 +1247,40 @@ export function DashboardOverview() {
                   {activeTab === "today"
                     ? "You currently have no ride assignments scheduled for today."
                     : activeTab === "upcoming"
-                      ? "Assigned future trips starting from tomorrow will appear here."
+                      ? "Assigned trips scheduled for tomorrow will appear here."
                       : activeTab === "completed"
                         ? "Trips you complete will be stored here for your records."
                         : "Uncompleted past trips whose scheduled pickup time passed will appear here."}
                 </p>
               </div>
             ) : (
-              displayedList.map((trip: any, index: number) => (
+              paginatedList.map((trip: any, index: number) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}
                   index={index}
-                  isLastItem={index === displayedList.length - 1}
+                  isLastItem={index === paginatedList.length - 1}
                 />
               ))
             )}
           </div>
-          {totalPages[activeTab] > 1 && (
+          {totalPagesForTab > 1 && (
             <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
               <button
                 type="button"
-                disabled={pages[activeTab] <= 1 || loading}
-                onClick={() => setPages((p) => ({ ...p, [activeTab]: p[activeTab] - 1 }))}
+                disabled={currentPage <= 1 || loading}
+                onClick={() => setPages((p) => ({ ...p, [activeTab]: Math.max(1, currentPage - 1) }))}
                 className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
               >
                 Previous
               </button>
               <span className="text-sm font-medium text-muted-foreground">
-                Page {pages[activeTab]} of {totalPages[activeTab]}
+                Page {currentPage} of {totalPagesForTab}
               </span>
               <button
                 type="button"
-                disabled={pages[activeTab] >= totalPages[activeTab] || loading}
-                onClick={() => setPages((p) => ({ ...p, [activeTab]: p[activeTab] + 1 }))}
+                disabled={currentPage >= totalPagesForTab || loading}
+                onClick={() => setPages((p) => ({ ...p, [activeTab]: Math.min(totalPagesForTab, currentPage + 1) }))}
                 className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
               >
                 Next
