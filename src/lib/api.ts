@@ -210,9 +210,26 @@ export async function startShiftApi(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
-    return await res.json();
-  } catch {
-    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to start shift" } };
+
+    if (res.status === 413) {
+      return {
+        success: false,
+        error: { code: "PAYLOAD_TOO_LARGE", message: "Photo file size too large for server. Please retake photo." },
+      };
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return await res.json();
+    }
+
+    const text = await res.text();
+    return {
+      success: false,
+      error: { code: `HTTP_${res.status}`, message: text || `Server returned error status ${res.status}` },
+    };
+  } catch (err: any) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: err?.message || "Failed to start shift" } };
   }
 }
 
@@ -234,9 +251,26 @@ export async function endShiftApi(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
-    return await res.json();
-  } catch {
-    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to end shift" } };
+
+    if (res.status === 413) {
+      return {
+        success: false,
+        error: { code: "PAYLOAD_TOO_LARGE", message: "Photo file size too large for server. Please retake photo." },
+      };
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return await res.json();
+    }
+
+    const text = await res.text();
+    return {
+      success: false,
+      error: { code: `HTTP_${res.status}`, message: text || `Server returned error status ${res.status}` },
+    };
+  } catch (err: any) {
+    return { success: false, error: { code: "NETWORK_ERROR", message: err?.message || "Failed to end shift" } };
   }
 }
 

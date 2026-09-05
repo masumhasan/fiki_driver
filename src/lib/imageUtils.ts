@@ -6,9 +6,9 @@
 
 export async function compressImage(
   file: File,
-  maxWidth = 1920,
-  maxHeight = 1920,
-  quality = 0.82
+  maxWidth = 1600,
+  maxHeight = 1600,
+  quality = 0.8
 ): Promise<File> {
   // If not a recognized image type, return as is
   if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {

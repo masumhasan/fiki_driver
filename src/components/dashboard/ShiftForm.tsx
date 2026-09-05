@@ -167,7 +167,7 @@ export function ShiftForm({
       if (uploadedList.length > 0) {
         setPhotos((prev) => [...prev, ...uploadedList])
       } else {
-        setError('Failed to upload vehicle photos to S3. Please try again.')
+        setError('Failed to upload vehicle photos. Please try again.')
       }
     } else {
       setError('Authentication required to upload photos.')
@@ -201,17 +201,26 @@ export function ShiftForm({
     }
 
     try {
-      const photoUrlsList = photos.map((p) => p.url)
-      const payload = {
+      const photoUrlsList = photos.map((p) => p.url).filter(Boolean)
+      const payload: {
+        odometer: string
+        fuel: string
+        condition: string
+        notes: string
+        photoUrl?: string
+        photos?: string[]
+      } = {
         odometer: rawNum,
         fuel,
         condition,
         notes,
-        photoUrl: photoUrlsList[0] || '',
-        photos: photoUrlsList,
-        startPhotoUrls: isStart ? photoUrlsList : undefined,
-        endPhotoUrls: !isStart ? photoUrlsList : undefined,
       }
+
+      if (photoUrlsList.length > 0) {
+        payload.photoUrl = photoUrlsList[0]
+        payload.photos = photoUrlsList
+      }
+
       const res = isStart ? await startShiftApi(token, payload) : await endShiftApi(token, payload)
       if (res.success) {
         onSuccess?.()
@@ -219,8 +228,8 @@ export function ShiftForm({
       } else {
         setError(res.error?.message || `Failed to ${isStart ? 'start' : 'end'} shift.`)
       }
-    } catch {
-      setError(`Failed to ${isStart ? 'start' : 'end'} shift.`)
+    } catch (err: any) {
+      setError(err?.message || `Failed to ${isStart ? 'start' : 'end'} shift.`)
     } finally {
       setSubmitting(false)
     }
