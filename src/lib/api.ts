@@ -1,5 +1,14 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
+export async function getCrmContentApi() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/settings/crm-content`);
+    return await res.json();
+  } catch {
+    return { success: false, error: { code: "NETWORK_ERROR", message: "Failed to fetch CRM content" } };
+  }
+}
+
 export interface LoginResponse {
   success: boolean;
   data?: {

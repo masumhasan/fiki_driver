@@ -150,21 +150,21 @@ export default function LoginPage() {
               >
                 <a
                   className="transition-colors hover:text-primary"
-                  href="#privacy"
+                  href="/privacy"
                 >
                   Privacy Policy
                 </a>
                 <span aria-hidden="true">•</span>
                 <a
                   className="transition-colors hover:text-primary"
-                  href="#terms"
+                  href="/terms"
                 >
                   Terms of Service
                 </a>
                 <span aria-hidden="true">•</span>
                 <a
                   className="transition-colors hover:text-primary"
-                  href="#help"
+                  href="/help-center"
                 >
                   Help Center
                 </a>
@@ -179,3 +179,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
+
