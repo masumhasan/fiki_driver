@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getDriverTripsApi, updateDriverTripStatusApi } from "@/lib/api";
+import {
+  getDispatchNumberApi,
+  getDriverTripsApi,
+  getTodayShiftApi,
+  updateDriverTripStatusApi,
+} from "@/lib/api";
+import { getDriverSession } from "@/lib/auth";
 import {
   Accessibility,
   ArrowRight,
@@ -803,216 +809,238 @@ export function DashboardOverview() {
   const [totalPages, setTotalPages] = useState({ today: 1, upcoming: 1, completed: 1, missed: 1 });
   const [tabCounts, setTabCounts] = useState({ today: 0, upcoming: 0, completed: 0, missed: 0 });
 
-  const fetchTrips = () => {
-    setLoading(true);
-    import("@/lib/auth").then(({ getDriverSession }) => {
-      const session = getDriverSession();
-      if (session?.vehicle) {
-        setSessionVehicle(session.vehicle);
+  const mapApiTrips = (rawTrips: any[], todayDayFull: string, todayDayShort: string) => {
+    const mappedList: any[] = [];
+
+    rawTrips.forEach((t: any) => {
+      let uiStatus: TripStatus = "scheduled";
+      if (t.status === "COMPLETED") uiStatus = "completed";
+      else if (t.status === "MISSED") uiStatus = "missed";
+      else if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
+      else uiStatus = "scheduled";
+
+      let nextStatus = "";
+      let nextActionLabel = "";
+      if (t.status === "ACCEPTED") {
+        nextStatus = "DRIVER_ARRIVING";
+        nextActionLabel = "Start Pickup";
+      } else if (t.status === "DRIVER_ARRIVING") {
+        nextStatus = "DRIVER_ARRIVED";
+        nextActionLabel = "Mark Arrived";
+      } else if (t.status === "DRIVER_ARRIVED") {
+        nextStatus = "IN_PROGRESS";
+        nextActionLabel = "Pick Up Passenger";
+      } else if (t.status === "IN_PROGRESS") {
+        nextStatus = "COMPLETED";
+        nextActionLabel = "Complete Drop-off";
       }
-      const token = session?.token;
-      if (token) {
-        import("@/lib/api").then(({ getDispatchNumberApi, getTodayShiftApi, getDriverTripsApi }) => {
-          Promise.all([
-            getDispatchNumberApi(token).then((res) => {
-              if (res.success && res.data) {
-                setDispatchNumber(res.data.dispatchNumber);
-              }
-            }),
-            getTodayShiftApi(token).then((res) => {
-              if (res.success && res.data) {
-                if (res.data.shift && res.data.shift.status) {
-                  setShiftStatus(res.data.shift.status);
-                  setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
-                } else {
-                  setShiftStatus(null);
-                  setShiftFuel(null);
-                }
-                setTodayShift({
-                  ...(res.data.shift || {}),
-                  todayScheduleHours: res.data.todayScheduleHours || res.data.shift?.todayScheduleHours || res.data.todaySchedule?.hoursText || "Day Off",
-                });
-              } else {
-                setShiftStatus(null);
-                setShiftFuel(null);
-                setTodayShift(null);
-              }
-            }),
-            getDriverTripsApi(token, undefined, 1, 100).then((res) => {
-              if (res.success && res.data && Array.isArray(res.data.trips)) {
-                if (res.data.counts) {
-                  setTabCounts(res.data.counts);
-                }
 
+      const passengerName = t.fullName || t.passengerId?.name || "Passenger";
+      const passengerPhone = t.phoneNumber || t.passengerId?.phone || t.emergencyContactPhone || "";
+      const cleanPassengerPhone = passengerPhone ? passengerPhone.replace(/[^\d+]/g, "") : "";
+      const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
+      const mobility = Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard";
 
-                const now = new Date();
-                const todayDayFull = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: CENTRAL_TZ }).format(now);
-                const todayDayShort = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: CENTRAL_TZ }).format(now);
+      const isChildLeg = Boolean(t.parentRequestId || t.legType);
+      const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
+      const isRoundTrip = t.tripType === "round-trip" || t.tripType === "round_trip" || t.isRoundTrip === true;
 
-                const mappedList: any[] = [];
-
-                res.data.trips.forEach((t: any) => {
-                  let uiStatus: TripStatus = "scheduled";
-                  if (t.status === "COMPLETED") uiStatus = "completed";
-                  else if (t.status === "MISSED") uiStatus = "missed";
-                  else if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
-                  else uiStatus = "scheduled";
-
-                  let nextStatus = "";
-                  let nextActionLabel = "";
-                  if (t.status === "ACCEPTED") {
-                    nextStatus = "DRIVER_ARRIVING";
-                    nextActionLabel = "Start Pickup";
-                  } else if (t.status === "DRIVER_ARRIVING") {
-                    nextStatus = "DRIVER_ARRIVED";
-                    nextActionLabel = "Mark Arrived";
-                  } else if (t.status === "DRIVER_ARRIVED") {
-                    nextStatus = "IN_PROGRESS";
-                    nextActionLabel = "Pick Up Passenger";
-                  } else if (t.status === "IN_PROGRESS") {
-                    nextStatus = "COMPLETED";
-                    nextActionLabel = "Complete Drop-off";
-                  }
-
-                  const passengerName = t.fullName || t.passengerId?.name || "Passenger";
-                  const passengerPhone = t.phoneNumber || t.passengerId?.phone || t.emergencyContactPhone || "";
-                  const cleanPassengerPhone = passengerPhone ? passengerPhone.replace(/[^\d+]/g, "") : "";
-                  const initials = passengerName.split(" ").filter(Boolean).map((n: string) => n[0]).join("").toUpperCase().substring(0, 2) || "PA";
-                  const mobility = Array.isArray(t.mobilityOptions) && t.mobilityOptions.length > 0 ? t.mobilityOptions.join(", ") : "Standard";
-
-                  const isChildLeg = Boolean(t.parentRequestId || t.legType);
-                  const isRecurring = t.schedule === "recurring" || t.tripType === "recurring" || (Array.isArray(t.recurringDays) && t.recurringDays.length > 0);
-                  const isRoundTrip = t.tripType === "round-trip" || t.tripType === "round_trip" || t.isRoundTrip === true;
-
-                  // Filter unexpanded master recurring trips to ensure they only appear on their scheduled Recurring Days
-                  if (!isChildLeg && isRecurring && Array.isArray(t.recurringDays) && t.recurringDays.length > 0) {
-                    const matchesDay = t.recurringDays.some((day: string) => {
-                      const d = day.trim().toLowerCase();
-                      return (
-                        d === todayDayFull.toLowerCase() ||
-                        d === todayDayShort.toLowerCase() ||
-                        todayDayFull.toLowerCase().startsWith(d)
-                      );
-                    });
-                    if (!matchesDay) return;
-                  }
-
-                  const outboundInfo = getEffectiveTripDateAndTs(t, Boolean(t.isReturnLeg));
-                  const outboundPickupTime = t.pickupTime
-                    ? formatTimeTo12Hour(t.pickupTime)
-                    : (t.createdAt
-                        ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
-                        : "Scheduled");
-
-                  const legLabel = t.isReturnLeg
-                    ? "Round Trip (Return)"
-                    : isRoundTrip
-                      ? "Round Trip (Outbound)"
-                      : isRecurring
-                        ? "Recurring Trip"
-                        : (t.tripType || "One way");
-
-                  const pickupAddress = t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location";
-                  const dropoffAddress = t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location";
-                  const isLegPickedUp =
-                    t.status === "IN_PROGRESS" ||
-                    nextActionLabel === "Complete Drop-off" ||
-                    t.status === "COMPLETED";
-
-                  const targetMapAddress = isLegPickedUp ? dropoffAddress : pickupAddress;
-
-                  // Outbound / Individual Leg
-                  mappedList.push({
-                    id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}${t.isReturnLeg ? "-RET" : ""}`,
-                    rawId: t._id,
-                    rawStatus: t.status,
-                    status: uiStatus,
-                    rideType: legLabel,
-                    time: outboundPickupTime,
-                    date: outboundInfo.formattedDate,
-                    rawDate: outboundInfo.rawDate,
-                    timestampMs: outboundInfo.timestampMs,
-                    isToday: isTripToday(outboundInfo.rawDate),
-                    passenger: passengerName,
-                    passengerPhone,
-                    cleanPassengerPhone,
-                    initials,
-                    avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
-                    scheduleType: isRecurring ? "Recurring" : "One-Time",
-                    mobility,
-                    pickup: pickupAddress,
-                    dropoff: dropoffAddress,
-                    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetMapAddress)}`,
-                    nextStatus,
-                    nextActionLabel,
-                  });
-
-                  // Legacy single-doc fallback for unexpanded round trips only
-                  if (!isChildLeg && isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
-                    const returnInfo = getEffectiveTripDateAndTs(t, true);
-                    const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
-                    const returnPickupAddress = t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup";
-                    const returnDropoffAddress = t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination";
-                    const returnTargetMapAddress = isLegPickedUp ? returnDropoffAddress : returnPickupAddress;
-
-                    mappedList.push({
-                      id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
-                      rawId: t._id,
-                      rawStatus: t.status,
-                      status: uiStatus,
-                      rideType: "Round Trip (Return)",
-                      time: returnTimeFormatted,
-                      date: returnInfo.formattedDate,
-                      rawDate: returnInfo.rawDate,
-                      timestampMs: returnInfo.timestampMs,
-                      isToday: isTripToday(returnInfo.rawDate),
-                      passenger: passengerName,
-                      passengerPhone,
-                      cleanPassengerPhone,
-                      initials,
-                      avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
-                      scheduleType: isRecurring ? "Recurring" : "One-Time",
-                      mobility,
-                      pickup: returnPickupAddress,
-                      dropoff: returnDropoffAddress,
-                      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(returnTargetMapAddress)}`,
-                      nextStatus,
-                      nextActionLabel,
-                    });
-                  }
-                });
-                mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
-                setLiveTrips(mappedList);
-              } else {
-                setLiveTrips([]);
-              }
-            }),
-          ]).finally(() => {
-            setLoading(false);
-          });
+      // Filter unexpanded master recurring trips to ensure they only appear on their scheduled Recurring Days
+      if (!isChildLeg && isRecurring && Array.isArray(t.recurringDays) && t.recurringDays.length > 0) {
+        const matchesDay = t.recurringDays.some((day: string) => {
+          const d = day.trim().toLowerCase();
+          return (
+            d === todayDayFull.toLowerCase() ||
+            d === todayDayShort.toLowerCase() ||
+            todayDayFull.toLowerCase().startsWith(d)
+          );
         });
-      } else {
-        setLiveTrips([]);
-        setLoading(false);
+        if (!matchesDay) return;
+      }
+
+      const outboundInfo = getEffectiveTripDateAndTs(t, Boolean(t.isReturnLeg));
+      const outboundPickupTime = t.pickupTime
+        ? formatTimeTo12Hour(t.pickupTime)
+        : (t.createdAt
+            ? new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
+            : "Scheduled");
+
+      const legLabel = t.isReturnLeg
+        ? "Round Trip (Return)"
+        : isRoundTrip
+          ? "Round Trip (Outbound)"
+          : isRecurring
+            ? "Recurring Trip"
+            : (t.tripType || "One way");
+
+      const pickupAddress = t.pickupLocation?.address || t.streetAddress || t.pickupAddress || "Pickup Location";
+      const dropoffAddress = t.dropoffLocation?.address || t.destinationAddress || "Dropoff Location";
+      const isLegPickedUp =
+        t.status === "IN_PROGRESS" ||
+        nextActionLabel === "Complete Drop-off" ||
+        t.status === "COMPLETED";
+
+      const targetMapAddress = isLegPickedUp ? dropoffAddress : pickupAddress;
+
+      // Outbound / Individual Leg
+      mappedList.push({
+        id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}${t.isReturnLeg ? "-RET" : ""}`,
+        rawId: t._id,
+        rawStatus: t.status,
+        status: uiStatus,
+        rideType: legLabel,
+        time: outboundPickupTime,
+        date: outboundInfo.formattedDate,
+        rawDate: outboundInfo.rawDate,
+        timestampMs: outboundInfo.timestampMs,
+        isToday: isTripToday(outboundInfo.rawDate),
+        passenger: passengerName,
+        passengerPhone,
+        cleanPassengerPhone,
+        initials,
+        avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
+        scheduleType: isRecurring ? "Recurring" : "One-Time",
+        mobility,
+        pickup: pickupAddress,
+        dropoff: dropoffAddress,
+        mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(targetMapAddress)}`,
+        nextStatus,
+        nextActionLabel,
+      });
+
+      // Legacy single-doc fallback for unexpanded round trips only
+      if (!isChildLeg && isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
+        const returnInfo = getEffectiveTripDateAndTs(t, true);
+        const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
+        const returnPickupAddress = t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup";
+        const returnDropoffAddress = t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination";
+        const returnTargetMapAddress = isLegPickedUp ? returnDropoffAddress : returnPickupAddress;
+
+        mappedList.push({
+          id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
+          rawId: t._id,
+          rawStatus: t.status,
+          status: uiStatus,
+          rideType: "Round Trip (Return)",
+          time: returnTimeFormatted,
+          date: returnInfo.formattedDate,
+          rawDate: returnInfo.rawDate,
+          timestampMs: returnInfo.timestampMs,
+          isToday: isTripToday(returnInfo.rawDate),
+          passenger: passengerName,
+          passengerPhone,
+          cleanPassengerPhone,
+          initials,
+          avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
+          scheduleType: isRecurring ? "Recurring" : "One-Time",
+          mobility,
+          pickup: returnPickupAddress,
+          dropoff: returnDropoffAddress,
+          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(returnTargetMapAddress)}`,
+          nextStatus,
+          nextActionLabel,
+        });
       }
     });
+
+    mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+    return mappedList;
   };
+
+  const fetchTrips = (
+    tabToFetch: "today" | "upcoming" | "completed" | "missed" = activeTab,
+    pageToFetch: number = pages[tabToFetch] || 1
+  ) => {
+    setLoading(true);
+    const session = getDriverSession();
+    if (session?.vehicle) {
+      setSessionVehicle(session.vehicle);
+    }
+    const token = session?.token;
+    if (token) {
+      const now = new Date();
+      const todayDayFull = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: CENTRAL_TZ }).format(now);
+      const todayDayShort = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: CENTRAL_TZ }).format(now);
+
+      Promise.all([
+        getDispatchNumberApi(token).then((res) => {
+          if (res.success && res.data) {
+            setDispatchNumber(res.data.dispatchNumber);
+          }
+        }),
+        getTodayShiftApi(token).then((res) => {
+          if (res.success && res.data) {
+            if (res.data.shift && res.data.shift.status) {
+              setShiftStatus(res.data.shift.status);
+              setShiftFuel(res.data.shift.startFuel || res.data.shift.fuelLevel || null);
+            } else {
+              setShiftStatus(null);
+              setShiftFuel(null);
+            }
+            setTodayShift({
+              ...(res.data.shift || {}),
+              todayScheduleHours: res.data.todayScheduleHours || res.data.shift?.todayScheduleHours || res.data.todaySchedule?.hoursText || "Day Off",
+            });
+          } else {
+            setShiftStatus(null);
+            setShiftFuel(null);
+            setTodayShift(null);
+          }
+        }),
+        getDriverTripsApi(token, tabToFetch, pageToFetch, 10).then((res) => {
+          if (res.success && res.data && Array.isArray(res.data.trips)) {
+            if (res.data.counts) {
+              setTabCounts(res.data.counts);
+            }
+            if (res.data.pagination) {
+              setTotalPages((prev) => ({
+                ...prev,
+                [tabToFetch]: res.data.pagination.totalPages || 1,
+              }));
+            }
+            const mapped = mapApiTrips(res.data.trips, todayDayFull, todayDayShort);
+            setLiveTrips(mapped);
+          } else {
+            setLiveTrips([]);
+          }
+        }),
+      ]).finally(() => {
+        setLoading(false);
+      });
+    } else {
+      setLiveTrips([]);
+      setLoading(false);
+    }
+  };
+
   const [currentDateStr, setCurrentDateStr] = useState(getCentralTodayDateStr());
 
   useEffect(() => {
-    fetchTrips();
-    
+    fetchTrips(activeTab, pages[activeTab] || 1);
+
     // Check every minute if the day has rolled over. If it has, update state and refetch.
     const interval = setInterval(() => {
       const newDateStr = getCentralTodayDateStr();
       if (newDateStr !== currentDateStr) {
         setCurrentDateStr(newDateStr);
-        fetchTrips();
+        fetchTrips(activeTab, 1);
       }
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, [currentDateStr]);
+
+  const handleTabClick = (tab: "today" | "upcoming" | "completed" | "missed") => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setPages((prev) => ({ ...prev, [tab]: 1 }));
+    fetchTrips(tab, 1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPages((prev) => ({ ...prev, [activeTab]: newPage }));
+    fetchTrips(activeTab, newPage);
+  };
 
   const handleStatusChange = async (tripId: string, nextStatus: string) => {
     // Block only if shift was never started (null). Allow both IN_PROGRESS and COMPLETED
@@ -1021,84 +1049,34 @@ export function DashboardOverview() {
       setShowShiftAlert(true);
       return;
     }
-    const { getDriverSession } = await import("@/lib/auth");
     const session = getDriverSession();
     const token = session?.token;
     if (token) {
       const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
       if (res.success) {
-        fetchTrips();
+        fetchTrips(activeTab, pages[activeTab] || 1);
       } else if (res.error?.code === "SHIFT_NOT_STARTED") {
         setShowShiftAlert(true);
       }
     }
   };
 
-  const todayCentralStr = currentDateStr;
-  const nextDayCentralStr = getCentralNextDayDateStr(todayCentralStr);
-
-  const isLegMissed = (t: any) => {
-    // If the backend explicitly flagged it as completed or missed, honour that
-    if (t.status === "completed" || t.status === "missed") {
-      return t.status === "missed";
-    }
-    // Never mark as missed if the driver is already actively working the trip
-    if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.rawStatus)) {
-      return false;
-    }
-    // A trip is "missed" ONLY when its scheduled date is fully in the past
-    // (i.e. belongs to a prior day). If the trip is still today, keep it in
-    // Today's Trips regardless of whether the pickup time has already elapsed.
-    if (!t.rawDate) return false;
-    return t.rawDate < todayCentralStr;
-  };
-
-  const activeTripList: any[] = liveTrips.map((t: any) => {
-    const missed = isLegMissed(t);
-    // Dynamically recalculate isToday on render to handle day rollovers
-    const isActuallyToday = t.rawDate === todayCentralStr;
-    return {
+  const activeTripList: any[] = useMemo(() => {
+    return liveTrips.map((t: any) => ({
       ...t,
-      isToday: isActuallyToday,
-      status: missed ? "missed" : t.status,
       onStatusChange: handleStatusChange,
-    };
-  });
+    }));
+  }, [liveTrips, shiftStatus]);
 
-  const todayTrips = useMemo(
-    () => activeTripList.filter((t: any) => t.rawDate === todayCentralStr && t.status !== "completed" && t.status !== "missed"),
-    [activeTripList, todayCentralStr]
-  );
-  const nextDayTrips = useMemo(
-    () => activeTripList.filter((t: any) => t.rawDate === nextDayCentralStr && t.status !== "completed" && t.status !== "missed"),
-    [activeTripList, nextDayCentralStr]
-  );
-  const completedTrips = useMemo(
-    () => activeTripList.filter((t: any) => t.status === "completed"),
-    [activeTripList]
-  );
-  const missedTrips = useMemo(
-    () => activeTripList.filter((t: any) => t.status === "missed"),
-    [activeTripList]
-  );
+  const todayCount = tabCounts.today || 0;
+  const upcomingCount = tabCounts.upcoming ?? (tabCounts as any).nextDay ?? 0;
+  const completedCount = tabCounts.completed || 0;
+  const missedCount = tabCounts.missed || 0;
 
-  const todayCount = todayTrips.length;
-  const upcomingCount = nextDayTrips.length;
-  const completedCount = Math.max(tabCounts.completed || 0, completedTrips.length);
-  const missedCount = Math.max(tabCounts.missed || 0, missedTrips.length);
-
-  const displayedList = useMemo(() => {
-    if (activeTab === "today") return todayTrips;
-    if (activeTab === "upcoming") return nextDayTrips;
-    if (activeTab === "completed") return completedTrips;
-    if (activeTab === "missed") return missedTrips;
-    return [];
-  }, [activeTab, todayTrips, nextDayTrips, completedTrips, missedTrips]);
-
-  const pageSize = 10;
-  const totalPagesForTab = Math.max(1, Math.ceil(displayedList.length / pageSize));
+  const displayedList = activeTripList;
+  const totalPagesForTab = totalPages[activeTab] || 1;
   const currentPage = Math.min(pages[activeTab] || 1, totalPagesForTab);
-  const paginatedList = displayedList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedList = displayedList;
 
   const totalCountForDistance = todayCount;
 
@@ -1163,7 +1141,7 @@ export function DashboardOverview() {
             <div className="mt-3 flex items-center border-b border-border overflow-x-auto">
               <button
                 type="button"
-                onClick={() => setActiveTab("today")}
+                onClick={() => handleTabClick("today")}
                 className={cn(
                   "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "today"
@@ -1178,7 +1156,7 @@ export function DashboardOverview() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("upcoming")}
+                onClick={() => handleTabClick("upcoming")}
                 className={cn(
                   "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "upcoming"
@@ -1193,7 +1171,7 @@ export function DashboardOverview() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("completed")}
+                onClick={() => handleTabClick("completed")}
                 className={cn(
                   "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "completed"
@@ -1208,7 +1186,7 @@ export function DashboardOverview() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("missed")}
+                onClick={() => handleTabClick("missed")}
                 className={cn(
                   "relative px-5 py-3 text-xs font-bold transition-colors whitespace-nowrap",
                   activeTab === "missed"
@@ -1275,7 +1253,7 @@ export function DashboardOverview() {
               <button
                 type="button"
                 disabled={currentPage <= 1 || loading}
-                onClick={() => setPages((p) => ({ ...p, [activeTab]: Math.max(1, currentPage - 1) }))}
+                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                 className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
               >
                 Previous
@@ -1286,7 +1264,7 @@ export function DashboardOverview() {
               <button
                 type="button"
                 disabled={currentPage >= totalPagesForTab || loading}
-                onClick={() => setPages((p) => ({ ...p, [activeTab]: Math.min(totalPagesForTab, currentPage + 1) }))}
+                onClick={() => handlePageChange(Math.min(totalPagesForTab, currentPage + 1))}
                 className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
               >
                 Next
