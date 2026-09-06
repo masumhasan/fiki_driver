@@ -365,22 +365,19 @@ function TripCard({ trip, index, isLastItem = false }: { trip: Trip; index: numb
               <span className="rounded-md bg-muted px-2 py-1 font-mono text-[0.65rem] font-semibold text-muted-foreground">
                 {trip.id}
               </span>
-              <span
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold",
-                  status.badge,
-                )}
-              >
-                {status.label}
-              </span>
+              {trip.status !== "scheduled" && (
+                <span
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold",
+                    status.badge,
+                  )}
+                >
+                  {status.label}
+                </span>
+              )}
               <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[0.68rem] font-medium text-muted-foreground">
                 {trip.rideType}
               </span>
-              {trip.scheduleType && (
-                <span className="rounded-full border border-border bg-primary/5 px-2.5 py-1 text-[0.68rem] font-medium text-primary">
-                  {trip.scheduleType}
-                </span>
-              )}
               <span className="ml-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                 {trip.date}
               </span>

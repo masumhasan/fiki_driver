@@ -1041,8 +1041,8 @@ export function RideDetailsOverview() {
         timeZone: "America/Chicago",
       }))
     : "—";
-  const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "8:00 AM";
-  const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : "8:45 AM";
+  const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "—";
+  const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : null;
 
   const isPassengerPickedUp =
     trip.status === "IN_PROGRESS" ||
@@ -1199,7 +1199,7 @@ export function RideDetailsOverview() {
             </div>
           </div>
 
-          <dl className="grid grid-cols-3 gap-5 border-t border-border pt-4 text-right sm:block sm:space-y-3 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+          <dl className={`grid ${dropoffTimeStr ? "grid-cols-3" : "grid-cols-2"} gap-5 border-t border-border pt-4 text-right sm:block sm:space-y-3 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0`}>
             <div>
               <dt className="text-[0.65rem] text-muted-foreground">Date</dt>
               <dd className="mt-1 text-xs font-semibold text-foreground">
@@ -1212,12 +1212,14 @@ export function RideDetailsOverview() {
                 {pickupTimeStr}
               </dd>
             </div>
-            <div>
-              <dt className="text-[0.65rem] text-muted-foreground">Drop-off</dt>
-              <dd className="mt-1 text-xs font-semibold text-foreground">
-                {dropoffTimeStr}
-              </dd>
-            </div>
+            {dropoffTimeStr && (
+              <div>
+                <dt className="text-[0.65rem] text-muted-foreground">Drop-off</dt>
+                <dd className="mt-1 text-xs font-semibold text-foreground">
+                  {dropoffTimeStr}
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
       </section>

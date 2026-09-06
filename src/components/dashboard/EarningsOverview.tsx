@@ -93,6 +93,7 @@ export function EarningsOverview() {
 
   const [liveEarnings, setLiveEarnings] = useState<{
     hourlyRate: number;
+    clockedHours?: number;
     approvedHours: number;
     completedTripsCount: number;
     tripBonusPerRide: number;
@@ -176,11 +177,11 @@ export function EarningsOverview() {
   }
 
   const hourlyRate = liveEarnings?.hourlyRate ?? 0;
-  const approvedHours = liveEarnings?.approvedHours ?? 0;
+  const clockedHours = liveEarnings?.clockedHours ?? liveEarnings?.approvedHours ?? 0;
   const completedTripsCount = liveEarnings?.completedTripsCount ?? 0;
   const tripBonusRate = liveEarnings?.tripBonusRate ?? liveEarnings?.tripBonusPerRide ?? 3;
   const tripBonus = liveEarnings?.tripBonus ?? (completedTripsCount * tripBonusRate);
-  const regularWages = liveEarnings?.regularWages ?? (hourlyRate * approvedHours);
+  const regularWages = liveEarnings?.regularWages ?? (hourlyRate * clockedHours);
   const grossEarnings = liveEarnings?.grossEarnings ?? (regularWages + tripBonus);
 
   const payPeriodRange = liveEarnings?.payPeriodRange || selectedPeriod?.label || "Aug 17 – Aug 31, 2026";
@@ -193,7 +194,7 @@ export function EarningsOverview() {
 
   const summary = [
     [`$${hourlyRate}/hr`, "Hourly Rate", CircleDollarSign],
-    [`${approvedHours} hrs`, "Approved Hours", Clock3],
+    [`${clockedHours} hrs`, "Clocked Hours", Clock3],
     [`${completedTripsCount}`, "Completed Trips", Route],
     [`${completedTripsCount} × $${tripBonusRate}`, "Trip Bonus", TrendingUp],
     [`$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Total Salary", WalletCards],
@@ -389,7 +390,7 @@ export function EarningsOverview() {
         <h2 className="text-sm font-semibold">Earnings Breakdown</h2>
         <dl className="mt-5 divide-y divide-border">
           {[
-            ["Regular Wages", `${approvedHours} hrs × $${hourlyRate}/hr`, `$${regularWages.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            ["Regular Wages", `${clockedHours} hrs × $${hourlyRate}/hr`, `$${regularWages.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
             ["Trip Bonus", `${completedTripsCount} trips × $${tripBonusRate.toFixed(2)}`, `$${tripBonus.toFixed(2)}`],
             ["Gross Earnings", `${payPeriodRange} total`, `$${grossEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
           ].map(([label, detail, amount], index) => (
