@@ -838,7 +838,12 @@ export function RideDetailsOverview() {
 
     let finalData = { ...data };
     if (finalData.receiverSignature && finalData.receiverSignature.startsWith("data:image/")) {
-      finalData.receiverSignature = await uploadBase64Image(finalData.receiverSignature, "signatures", token);
+      try {
+        finalData.receiverSignature = await uploadBase64Image(finalData.receiverSignature, "signatures", token);
+      } catch (err) {
+        alert("Failed to upload receiver signature. Please check your internet connection and try again.");
+        return;
+      }
     }
 
     const res = await updateDriverTripStatusApi(

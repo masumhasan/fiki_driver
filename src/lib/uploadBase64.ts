@@ -32,10 +32,10 @@ export async function uploadBase64Image(base64: string, category: string, token?
     }
     
     console.error("Failed to upload base64 image:", data.error);
-    return "";
-  } catch (err) {
-    console.error("Network error uploading base64 image:", err);
-    return "";
+    throw new Error(data.error?.message || "Failed to upload image to S3 storage.");
+  } catch (err: any) {
+    console.error("Error uploading base64 image:", err);
+    throw err;
   }
 }
 
