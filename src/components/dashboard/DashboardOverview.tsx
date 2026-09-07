@@ -809,7 +809,7 @@ export function DashboardOverview() {
   const [totalPages, setTotalPages] = useState({ today: 1, upcoming: 1, completed: 1, missed: 1 });
   const [tabCounts, setTabCounts] = useState({ today: 0, upcoming: 0, completed: 0, missed: 0 });
 
-  const mapApiTrips = (rawTrips: any[], todayDayFull: string, todayDayShort: string) => {
+  const mapApiTrips = (rawTrips: any[], todayDayFull: string, todayDayShort: string, currentTab?: string) => {
     const mappedList: any[] = [];
 
     rawTrips.forEach((t: any) => {
@@ -943,7 +943,11 @@ export function DashboardOverview() {
       }
     });
 
-    mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+    if (currentTab === "missed") {
+      mappedList.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+    } else {
+      mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+    }
     return mappedList;
   };
 
@@ -998,7 +1002,7 @@ export function DashboardOverview() {
                 [tabToFetch]: res.data.pagination.totalPages || 1,
               }));
             }
-            const mapped = mapApiTrips(res.data.trips, todayDayFull, todayDayShort);
+            const mapped = mapApiTrips(res.data.trips, todayDayFull, todayDayShort, tabToFetch);
             setLiveTrips(mapped);
           } else {
             setLiveTrips([]);

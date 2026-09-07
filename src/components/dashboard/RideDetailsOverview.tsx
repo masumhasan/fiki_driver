@@ -1014,7 +1014,12 @@ export function RideDetailsOverview() {
     Array.isArray(trip.mobilityOptions) && trip.mobilityOptions.length > 0
       ? trip.mobilityOptions.join(", ")
       : "Wheelchair";
-  const tripType = trip.tripType || "One way";
+  const isRoundTrip = trip.tripType === "round-trip" || trip.tripType === "round_trip" || trip.isRoundTrip === true;
+  const tripType = trip.isReturnLeg
+    ? "Round Trip (Return)"
+    : isRoundTrip
+      ? (trip.parentRequestId || trip.legType ? "Round Trip (Outbound)" : "Round Trip")
+      : (trip.schedule === "recurring" ? "Recurring Trip" : (trip.tripType || "One way"));
 
   const pickupAddress =
     trip.pickupLocation?.address ||
