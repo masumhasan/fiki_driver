@@ -22,6 +22,7 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
     session?.licenseExpirationDate || ""
   );
   const [avatarUrl, setAvatarUrl] = useState(session?.avatarUrl || "");
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +37,14 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
     if (!file) return;
 
     setError("");
+    setAvatarLoadFailed(false);
     setUploadingAvatar(true);
+
+    // Instant local preview
+    if (typeof window !== "undefined") {
+      const preview = URL.createObjectURL(file);
+      setAvatarUrl(preview);
+    }
 
     const token = session?.token;
     if (token) {
@@ -134,11 +142,12 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
           <div className="flex flex-col items-center justify-center">
             <div className="relative group">
               <span className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-card bg-secondary text-2xl font-bold text-secondary-foreground shadow-md ring-4 ring-secondary/20">
-                {avatarUrl ? (
+                {avatarUrl && !avatarLoadFailed ? (
                   <img
                     src={avatarUrl}
                     alt={name}
                     className="size-full object-cover"
+                    onError={() => setAvatarLoadFailed(true)}
                   />
                 ) : (
                   <span>{initials}</span>

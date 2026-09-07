@@ -111,7 +111,7 @@ export function ShiftForm({
   const [fuel, setFuel] = useState('half')
   const [condition, setCondition] = useState<Condition>('clear')
   const [notes, setNotes] = useState('')
-  const [photos, setPhotos] = useState<Array<{ name: string; url: string }>>([])
+  const [photos, setPhotos] = useState<Array<{ name: string; url: string; preview?: string }>>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -147,15 +147,16 @@ export function ShiftForm({
     if (token) {
       const { uploadImageApi } = await import('@/lib/api')
       const { compressImage } = await import('@/lib/imageUtils')
-      const uploadedList: Array<{ name: string; url: string }> = []
+      const uploadedList: Array<{ name: string; url: string; preview?: string }> = []
 
       for (const file of rawFiles) {
         try {
+          const preview = typeof window !== 'undefined' ? URL.createObjectURL(file) : ''
           // Compress image client-side to max 1920px JPEG (transforms 20MB iPhone camera shots into ~300KB JPEGs)
           const compressed = await compressImage(file)
           const res = await uploadImageApi(token, compressed, 'shift-odometers')
           if (res.success && res.data?.url) {
-            uploadedList.push({ name: file.name, url: res.data.url })
+            uploadedList.push({ name: file.name, url: res.data.url, preview })
           } else {
             console.error('Failed to upload vehicle photo:', file.name, res.error)
           }
@@ -178,7 +179,11 @@ export function ShiftForm({
   }
 
   function removePhoto(index: number) {
-    setPhotos((prev) => prev.filter((_, i) => i !== index))
+    setPhotos((prev) => {
+      const removed = prev[index]
+      if (removed?.preview && typeof window !== 'undefined') URL.revokeObjectURL(removed.preview)
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   async function submitShift(event: React.FormEvent<HTMLFormElement>) {
@@ -350,7 +355,16 @@ export function ShiftForm({
                   <div className="grid grid-cols-3 gap-2">
                     {photos.map((p, idx) => (
                       <div key={`${p.url}-${idx}`} className="group relative aspect-video overflow-hidden rounded-xl border border-border bg-slate-900 shadow-sm">
-                        <img src={p.url} alt={p.name} className="size-full object-cover transition-transform group-hover:scale-105" />
+                        <img
+                          src={p.preview || p.url}
+                          alt={p.name}
+                          className="size-full object-cover transition-transform group-hover:scale-105"
+                          onError={(e) => {
+                            if (p.preview && e.currentTarget.src !== p.url) {
+                              e.currentTarget.src = p.url;
+                            }
+                          }}
+                        />
                         <button
                           type="button"
                           onClick={() => removePhoto(idx)}
