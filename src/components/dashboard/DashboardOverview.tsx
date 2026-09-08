@@ -881,6 +881,18 @@ export function DashboardOverview() {
         t.status === "COMPLETED";
 
       const targetMapAddress = isLegPickedUp ? dropoffAddress : pickupAddress;
+      const isOutboundToday = isTripToday(outboundInfo.rawDate);
+      const tomorrowCentralStr = getCentralNextDayDateStr();
+      const isOutboundTomorrow = outboundInfo.rawDate === tomorrowCentralStr;
+
+      // In Today's Trips tab, strictly only include trips whose pickup date matches current day
+      if (currentTab === "today" && !isOutboundToday) {
+        return;
+      }
+      // In Next Day's Trips tab, strictly only include trips whose pickup date matches tomorrow
+      if ((currentTab === "upcoming" || currentTab === "nextDay") && !isOutboundTomorrow) {
+        return;
+      }
 
       // Outbound / Individual Leg
       mappedList.push({
@@ -893,7 +905,7 @@ export function DashboardOverview() {
         date: outboundInfo.formattedDate,
         rawDate: outboundInfo.rawDate,
         timestampMs: outboundInfo.timestampMs,
-        isToday: isTripToday(outboundInfo.rawDate),
+        isToday: isOutboundToday,
         passenger: passengerName,
         passengerPhone,
         cleanPassengerPhone,
@@ -911,35 +923,47 @@ export function DashboardOverview() {
       // Legacy single-doc fallback for unexpanded round trips only
       if (!isChildLeg && isRoundTrip && (t.returnPickupTime || t.returnPickupAddress)) {
         const returnInfo = getEffectiveTripDateAndTs(t, true);
-        const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
-        const returnPickupAddress = t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup";
-        const returnDropoffAddress = t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination";
-        const returnTargetMapAddress = isLegPickedUp ? returnDropoffAddress : returnPickupAddress;
+        const isReturnToday = isTripToday(returnInfo.rawDate);
+        const isReturnTomorrow = returnInfo.rawDate === tomorrowCentralStr;
 
-        mappedList.push({
-          id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
-          rawId: t._id,
-          rawStatus: t.status,
-          status: uiStatus,
-          rideType: "Round Trip (Return)",
-          time: returnTimeFormatted,
-          date: returnInfo.formattedDate,
-          rawDate: returnInfo.rawDate,
-          timestampMs: returnInfo.timestampMs,
-          isToday: isTripToday(returnInfo.rawDate),
-          passenger: passengerName,
-          passengerPhone,
-          cleanPassengerPhone,
-          initials,
-          avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
-          scheduleType: isRecurring ? "Recurring" : "One-Time",
-          mobility,
-          pickup: returnPickupAddress,
-          dropoff: returnDropoffAddress,
-          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(returnTargetMapAddress)}`,
-          nextStatus,
-          nextActionLabel,
-        });
+        let allowReturn = true;
+        if (currentTab === "today" && !isReturnToday) {
+          allowReturn = false;
+        } else if ((currentTab === "upcoming" || currentTab === "nextDay") && !isReturnTomorrow) {
+          allowReturn = false;
+        }
+
+        if (allowReturn) {
+          const returnTimeFormatted = t.returnPickupTime ? formatTimeTo12Hour(t.returnPickupTime) : "Return Pickup";
+          const returnPickupAddress = t.returnPickupAddress || t.dropoffLocation?.address || t.destinationAddress || "Return Pickup";
+          const returnDropoffAddress = t.returnDestinationAddress || t.pickupLocation?.address || t.pickupAddress || "Return Destination";
+          const returnTargetMapAddress = isLegPickedUp ? returnDropoffAddress : returnPickupAddress;
+
+          mappedList.push({
+            id: `TRP-${t._id.substring(t._id.length - 4).toUpperCase()}-RET`,
+            rawId: t._id,
+            rawStatus: t.status,
+            status: uiStatus,
+            rideType: "Round Trip (Return)",
+            time: returnTimeFormatted,
+            date: returnInfo.formattedDate,
+            rawDate: returnInfo.rawDate,
+            timestampMs: returnInfo.timestampMs,
+            isToday: isReturnToday,
+            passenger: passengerName,
+            passengerPhone,
+            cleanPassengerPhone,
+            initials,
+            avatarUrl: t.passengerAvatarUrl || t.passengerId?.avatarUrl || "",
+            scheduleType: isRecurring ? "Recurring" : "One-Time",
+            mobility,
+            pickup: returnPickupAddress,
+            dropoff: returnDropoffAddress,
+            mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(returnTargetMapAddress)}`,
+            nextStatus,
+            nextActionLabel,
+          });
+        }
       }
     });
 
