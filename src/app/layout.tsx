@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   title: "FIKI Transit Driver Portal",
   description:
     "Access schedules, rides, and driver tools through the FIKI Transit driver portal.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
