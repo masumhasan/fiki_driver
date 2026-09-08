@@ -967,7 +967,7 @@ export function DashboardOverview() {
       }
     });
 
-    if (currentTab === "missed") {
+    if (currentTab === "missed" || currentTab === "completed") {
       mappedList.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
     } else {
       mappedList.sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
