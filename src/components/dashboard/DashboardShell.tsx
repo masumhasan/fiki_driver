@@ -35,11 +35,6 @@ const primaryNavigation = [
     icon: CalendarDays,
   },
   {
-    label: "Ride details",
-    href: "/ride-details",
-    icon: Route,
-  },
-  {
     label: "My earnings",
     href: "/earnings",
     icon: Activity,
