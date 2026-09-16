@@ -42,7 +42,7 @@ function formatTimeTo12Hour(timeStr?: string): string {
 }
 
 type SummaryTone = "primary" | "secondary" | "success";
-type TripStatus = "inProgress" | "scheduled" | "completed" | "missed";
+type TripStatus = "inProgress" | "scheduled" | "completed" | "missed" | "noShow";
 
 type SummaryItem = {
   label: string;
@@ -247,6 +247,10 @@ const tripStatusStyles: Record<TripStatus, { label: string; badge: string }> = {
   missed: {
     label: "Missed",
     badge: "border-red-500/30 bg-red-50 text-red-600 font-bold",
+  },
+  noShow: {
+    label: "No Show Up",
+    badge: "border-amber-500/30 bg-amber-50 text-amber-800 font-bold dark:bg-amber-950/40 dark:text-amber-300",
   },
 };
 
@@ -816,6 +820,12 @@ export function DashboardOverview() {
       let uiStatus: TripStatus = "scheduled";
       if (t.status === "COMPLETED") uiStatus = "completed";
       else if (t.status === "MISSED") uiStatus = "missed";
+      else if (
+        t.status === "CANCELLED" &&
+        (t.cancellationReason === "No Show Up" ||
+          t.cancellationReason === "NO_SHOW")
+      )
+        uiStatus = "noShow";
       else if (["DRIVER_ARRIVING", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(t.status)) uiStatus = "inProgress";
       else uiStatus = "scheduled";
 

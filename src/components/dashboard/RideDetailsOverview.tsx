@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 import {
   Accessibility,
+  AlertTriangle,
   ArrowLeft,
   Building2,
   CarFront,
@@ -34,6 +35,7 @@ import {
   Save,
   ShieldAlert,
   UserRound,
+  UserX,
   Loader2,
   X,
 } from "lucide-react";
@@ -130,6 +132,9 @@ function LocationCard({
   onAction,
   actionText,
   actionDisabled,
+  secondaryActionText,
+  onSecondaryAction,
+  secondaryActionDisabled,
 }: {
   address: string;
   city?: string;
@@ -141,6 +146,9 @@ function LocationCard({
   onAction?: () => void;
   actionText?: string;
   actionDisabled?: boolean;
+  secondaryActionText?: string;
+  onSecondaryAction?: () => void;
+  secondaryActionDisabled?: boolean;
 }) {
   const isPickup = type === "pickup";
 
@@ -183,7 +191,6 @@ function LocationCard({
           </div>
         )}
 
-
         {actionText && (
           <button
             type="button"
@@ -192,6 +199,18 @@ function LocationCard({
             className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-secondary text-xs font-bold text-secondary-foreground shadow-[0_4px_10px_rgba(255,189,32,0.28)] transition-colors hover:bg-brand-yellow-hover disabled:opacity-50"
           >
             {actionText}
+          </button>
+        )}
+
+        {secondaryActionText && (
+          <button
+            type="button"
+            disabled={secondaryActionDisabled}
+            onClick={onSecondaryAction}
+            className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+          >
+            <UserX aria-hidden="true" className="size-3.5" />
+            {secondaryActionText}
           </button>
         )}
       </div>
@@ -216,11 +235,15 @@ function TripStatusPanel({
   trip,
   onNextStatus,
   nextActionText,
+  onNoShow,
+  canNoShow,
 }: {
   status: string;
   trip?: any;
   onNextStatus?: () => void;
   nextActionText?: string;
+  onNoShow?: () => void;
+  canNoShow?: boolean;
 }) {
   const getStepStates = (currentStatus: string, tripObj: any) => {
     const createdTime = formatStepTime(tripObj?.createdAt) || "9:40 AM";
@@ -236,6 +259,34 @@ function TripStatusPanel({
       tripObj?.inProgressAt || tripObj?.startedAt,
     );
     const completedTime = formatStepTime(tripObj?.completedAt);
+    const cancelledTime = formatStepTime(tripObj?.cancelledAt);
+
+    const isNoShow =
+      currentStatus === "CANCELLED" &&
+      (tripObj?.cancellationReason === "No Show Up" ||
+        tripObj?.cancellationReason === "NO_SHOW");
+
+    if (isNoShow) {
+      return [
+        { label: "Assigned", state: "complete", time: assignedTime },
+        { label: "Accepted", state: "complete", time: acceptedTime },
+        {
+          label: "Heading to pickup",
+          state: "complete",
+          time: arrivingTime || acceptedTime,
+        },
+        {
+          label: "Passenger no show up",
+          state: "cancelled",
+          time: cancelledTime,
+        },
+        {
+          label: "Trip cancelled (No charge)",
+          state: "complete",
+          time: cancelledTime,
+        },
+      ];
+    }
 
     switch (currentStatus) {
       case "ACCEPTED":
@@ -357,6 +408,7 @@ function TripStatusPanel({
           {steps.map((step, index) => {
             const isComplete = step.state === "complete";
             const isCurrent = step.state === "current";
+            const isCancelledState = step.state === "cancelled";
             const isLast = index === steps.length - 1;
 
             return (
@@ -369,15 +421,19 @@ function TripStatusPanel({
                     className={cn(
                       "grid size-6 place-items-center rounded-full border",
                       isComplete &&
-                      "border-brand-success bg-brand-success text-primary-foreground",
+                        "border-brand-success bg-brand-success text-primary-foreground",
                       isCurrent &&
-                      "border-secondary bg-secondary text-secondary-foreground",
+                        "border-secondary bg-secondary text-secondary-foreground",
+                      isCancelledState &&
+                        "border-amber-500 bg-amber-500/20 text-amber-700",
                       step.state === "upcoming" &&
-                      "border-border bg-card text-muted-foreground",
+                        "border-border bg-card text-muted-foreground",
                     )}
                   >
                     {isComplete ? (
                       <Check aria-hidden="true" className="size-3.5" />
+                    ) : isCancelledState ? (
+                      <UserX aria-hidden="true" className="size-3 text-amber-700" />
                     ) : (
                       <span
                         className={cn(
@@ -391,7 +447,7 @@ function TripStatusPanel({
                     <span
                       className={cn(
                         "min-h-5 w-px flex-1",
-                        isComplete ? "bg-brand-success" : "bg-border",
+                        isComplete ? "bg-brand-success" : isCancelledState ? "bg-amber-400" : "bg-border",
                       )}
                     />
                   )}
@@ -402,15 +458,17 @@ function TripStatusPanel({
                     <p
                       className={cn(
                         "text-xs font-semibold",
-                        step.state === "upcoming"
-                          ? "text-muted-foreground"
-                          : "text-foreground",
+                        isCancelledState
+                          ? "text-amber-800 dark:text-amber-300 font-bold"
+                          : step.state === "upcoming"
+                            ? "text-muted-foreground"
+                            : "text-foreground",
                       )}
                     >
                       {step.label}
                     </p>
                     {step.time && (
-                      <span className="text-[11px] font-bold text-primary">
+                      <span className={cn("text-[11px] font-bold", isCancelledState ? "text-amber-700" : "text-primary")}>
                         {step.time}
                       </span>
                     )}
@@ -418,6 +476,11 @@ function TripStatusPanel({
                   {isCurrent && (
                     <p className="mt-1 text-[0.68rem] font-medium text-brand-yellow-hover">
                       Current status
+                    </p>
+                  )}
+                  {isCancelledState && (
+                    <p className="mt-1 text-[0.68rem] font-medium text-amber-700">
+                      Passenger did not show up
                     </p>
                   )}
                 </div>
@@ -434,6 +497,17 @@ function TripStatusPanel({
           >
             {nextActionText}
             <ArrowLeft aria-hidden="true" className="size-3.5 rotate-180" />
+          </button>
+        )}
+
+        {canNoShow && onNoShow && (
+          <button
+            type="button"
+            onClick={onNoShow}
+            className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <UserX aria-hidden="true" className="size-3.5" />
+            Passenger No Show Up
           </button>
         )}
       </div>
@@ -750,6 +824,97 @@ function HandToHandSignatureModal({
   );
 }
 
+function NoShowModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (notes: string) => void;
+  loading?: boolean;
+}) {
+  const [notes, setNotes] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConfirm(notes.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <UserX className="size-5" />
+            <h3 className="text-base font-bold text-foreground">
+              Confirm Passenger No Show Up
+            </h3>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200">
+            <p className="font-bold flex items-center gap-1.5 mb-1.5 text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="size-4 shrink-0" />
+              Notice for No Show Up Trips:
+            </p>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] leading-relaxed">
+              <li>This trip will be marked as cancelled due to passenger no-show.</li>
+              <li>Passenger will <strong>not be charged</strong> for this trip.</li>
+              <li>Driver will <strong>not receive trip bonus</strong> for this trip.</li>
+              <li>Hand to Hand signature verification is <strong>waived</strong>.</li>
+            </ul>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-bold text-foreground">
+              Driver Notes / Observations (Optional)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Waited 15 minutes at pickup location, phone call unanswered..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full rounded-xl border border-input bg-muted px-3 py-2 text-xs font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/12"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={onClose}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-destructive px-5 py-2 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 shadow-sm cursor-pointer disabled:opacity-50"
+            >
+              {loading && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm No Show Up
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function RideDetailsOverview() {
   const searchParams = useSearchParams();
   const tripIdParam = searchParams.get("id");
@@ -760,6 +925,8 @@ export function RideDetailsOverview() {
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [noShowLoading, setNoShowLoading] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
   const fetchTrip = async () => {
@@ -858,6 +1025,31 @@ export function RideDetailsOverview() {
     } else if (res.error?.code === "SHIFT_NOT_STARTED") {
       setShowSignatureModal(false);
       setShowShiftAlert(true);
+    }
+  };
+
+  const handleConfirmNoShow = async (notes: string) => {
+    if (!trip) return;
+    const session = getDriverSession();
+    const token = session?.token;
+    if (!token) return;
+
+    setNoShowLoading(true);
+    try {
+      const res = await updateDriverTripStatusApi(token, trip._id, "CANCELLED", {
+        cancellationReason: "No Show Up",
+        driverNotes: notes || undefined,
+      });
+      if (res.success) {
+        setShowNoShowModal(false);
+        fetchTrip();
+      } else {
+        alert(res.error?.message || "Failed to mark trip as No Show Up");
+      }
+    } catch {
+      alert("Failed to update trip status");
+    } finally {
+      setNoShowLoading(false);
     }
   };
 
@@ -1064,6 +1256,14 @@ export function RideDetailsOverview() {
     : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickupAddress)}&destination=${encodeURIComponent(dropoffAddress)}`;
 
   // Determine status button & status badge
+  const canNoShow = ["ACCEPTED", "DRIVER_ARRIVING", "DRIVER_ARRIVED"].includes(
+    trip.status,
+  );
+  const isNoShow =
+    trip.status === "CANCELLED" &&
+    (trip.cancellationReason === "No Show Up" ||
+      trip.cancellationReason === "NO_SHOW");
+
   let statusBadgeLabel = "In progress";
   let pickupActionText = "";
   let pickupActionNext = "";
@@ -1098,6 +1298,10 @@ export function RideDetailsOverview() {
     nextStatusVal = "COMPLETED";
   } else if (trip.status === "COMPLETED") {
     statusBadgeLabel = "Completed";
+  } else if (isNoShow) {
+    statusBadgeLabel = "No Show Up";
+  } else if (trip.status === "CANCELLED") {
+    statusBadgeLabel = "Cancelled";
   }
 
   const passengerDetails: DetailItem[] = [
@@ -1140,7 +1344,14 @@ export function RideDetailsOverview() {
               >
                 {tripDisplayId}
               </h1>
-              <span className="rounded-full border border-secondary/50 bg-secondary/14 px-2.5 py-1 text-[0.68rem] font-semibold text-secondary-foreground">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[0.68rem] font-semibold",
+                  isNoShow
+                    ? "border border-amber-500/40 bg-amber-500/15 text-amber-800 font-bold dark:text-amber-300"
+                    : "border border-secondary/50 bg-secondary/14 text-secondary-foreground",
+                )}
+              >
                 {statusBadgeLabel}
               </span>
             </div>
@@ -1148,6 +1359,17 @@ export function RideDetailsOverview() {
         </div>
 
         <div className="flex gap-2">
+          {canNoShow && (
+            <button
+              type="button"
+              onClick={() => setShowNoShowModal(true)}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring cursor-pointer"
+            >
+              <UserX aria-hidden="true" className="size-3.5" />
+              <span className="hidden sm:inline">No Show Up</span>
+              <span className="sm:hidden">No Show</span>
+            </button>
+          )}
           <a
             href={mapsUrl}
             target="_blank"
@@ -1168,6 +1390,25 @@ export function RideDetailsOverview() {
           </a>
         </div>
       </div>
+
+      {isNoShow && (
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">
+              Passenger No Show Up
+            </h3>
+            <p className="mt-0.5 text-xs text-amber-700/90 dark:text-amber-200/80 leading-relaxed">
+              This trip was marked as No Show Up. The passenger was not charged, signature requirement was waived, and no trip bonus was awarded.
+              {trip.driverShiftNotes && (
+                <span className="block mt-1 font-medium italic">
+                  Driver note: "{trip.driverShiftNotes}"
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-[0_6px_22px_rgba(8,37,82,0.05)] sm:p-5">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
@@ -1245,15 +1486,15 @@ export function RideDetailsOverview() {
             trip.accessInformation ||
             "Call upon arrival. Use the main entrance on the west side."
           }
-
           actionText={pickupActionText}
           onAction={() => handleStatusChange(pickupActionNext)}
+          secondaryActionText={canNoShow ? "Passenger No Show Up" : undefined}
+          onSecondaryAction={() => setShowNoShowModal(true)}
         />
         <LocationCard
           type="dropoff"
           title="Drop-off information"
           address={dropoffAddress}
-
           actionText={dropoffActionText}
           onAction={() => handleStatusChange(dropoffActionNext)}
         />
@@ -1326,6 +1567,8 @@ export function RideDetailsOverview() {
             nextStatusVal && handleStatusChange(nextStatusVal)
           }
           nextActionText={nextStatusText}
+          onNoShow={() => setShowNoShowModal(true)}
+          canNoShow={canNoShow}
         />
       </div>
 
@@ -1345,6 +1588,13 @@ export function RideDetailsOverview() {
         isOpen={showSignatureModal}
         onClose={() => setShowSignatureModal(false)}
         onConfirm={handleConfirmHandToHand}
+      />
+
+      <NoShowModal
+        isOpen={showNoShowModal}
+        onClose={() => setShowNoShowModal(false)}
+        onConfirm={handleConfirmNoShow}
+        loading={noShowLoading}
       />
 
       {/* Avatar Modal */}

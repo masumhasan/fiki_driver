@@ -149,7 +149,13 @@ export async function updateDriverTripStatusApi(
   token: string,
   tripId: string,
   status: string,
-  extraData?: { receiverSignature?: string; receiverName?: string; receiverRelationship?: string }
+  extraData?: {
+    receiverSignature?: string;
+    receiverName?: string;
+    receiverRelationship?: string;
+    cancellationReason?: string;
+    driverNotes?: string;
+  }
 ) {
   try {
     const res = await fetch(`${API_BASE_URL}/drivers/me/trips/${tripId}/status`, {
