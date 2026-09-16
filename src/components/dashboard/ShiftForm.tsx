@@ -145,22 +145,21 @@ export function ShiftForm({
 
     const token = session?.token
     if (token) {
-      const { uploadImageApi } = await import('@/lib/api')
-      const { compressImage } = await import('@/lib/imageUtils')
+      const { uploadOptimizedFile } = await import('@/lib/imageOptimization')
       const uploadedList: Array<{ name: string; url: string; preview?: string }> = []
 
       for (const file of rawFiles) {
         try {
           const preview = typeof window !== 'undefined' ? URL.createObjectURL(file) : ''
-          // Compress image client-side to max 1920px JPEG (transforms 20MB iPhone camera shots into ~300KB JPEGs)
-          const compressed = await compressImage(file)
-          const res = await uploadImageApi(token, compressed, 'shift-odometers')
-          if (res.success && res.data?.url) {
-            uploadedList.push({ name: file.name, url: res.data.url, preview })
-          } else {
-            console.error('Failed to upload vehicle photo:', file.name, res.error)
+          const s3Url = await uploadOptimizedFile(file, {
+            category: 'shift-odometers',
+            preset: 'odometer',
+            token,
+          })
+          if (s3Url) {
+            uploadedList.push({ name: file.name, url: s3Url, preview })
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error('Error processing vehicle photo:', file.name, err)
         }
       }
@@ -168,7 +167,7 @@ export function ShiftForm({
       if (uploadedList.length > 0) {
         setPhotos((prev) => [...prev, ...uploadedList])
       } else {
-        setError('Failed to upload vehicle photos. Please try again.')
+        setError('Failed to process and upload vehicle photos. Please try again.')
       }
     } else {
       setError('Authentication required to upload photos.')
@@ -324,7 +323,7 @@ export function ShiftForm({
                 ref={cameraInputRef}
                 id={`${uploadId}-camera`}
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif,.HEIC,.HEIF"
                 capture="environment"
                 className="sr-only"
                 onChange={handleFileChange}
@@ -335,7 +334,7 @@ export function ShiftForm({
                 id={`${uploadId}-gallery`}
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif,.HEIC,.HEIF"
                 className="sr-only"
                 onChange={handleFileChange}
               />

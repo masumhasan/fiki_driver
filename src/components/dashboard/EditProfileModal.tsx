@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { Camera, Check, Loader2, User, X } from "lucide-react";
 import { getDriverSession, updateDriverSession, getInitials } from "@/lib/auth";
-import { updateDriverProfileApi, uploadImageApi } from "@/lib/api";
+import { updateDriverProfileApi } from "@/lib/api";
+import { uploadOptimizedFile, ACCEPTED_IMAGE_TYPES } from "@/lib/imageOptimization";
 
 type EditProfileModalProps = {
   isOpen: boolean;
@@ -48,14 +49,20 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
 
     const token = session?.token;
     if (token) {
-      const res = await uploadImageApi(token, file, "avatars");
-      if (res.success && res.data?.url) {
-        setAvatarUrl(res.data.url);
-      } else {
-        setError(res.error?.message || "Failed to upload profile photo to S3.");
+      try {
+        const s3Url = await uploadOptimizedFile(file, {
+          category: "avatars",
+          preset: "avatar",
+          token,
+        });
+        setAvatarUrl(s3Url);
+      } catch (err: any) {
+        console.error("Avatar upload failed:", err);
+        setError(err?.message || "Failed to upload profile photo to S3.");
       }
     }
     setUploadingAvatar(false);
+    if (e.target) e.target.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -170,12 +177,13 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept={ACCEPTED_IMAGE_TYPES}
               className="sr-only"
               onChange={handleAvatarChange}
+              disabled={uploadingAvatar}
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Click the camera icon to upload avatar (JPG, PNG to S3)
+              Click the camera icon to upload avatar (JPG, PNG, WebP, HEIC/HEIF)
             </p>
           </div>
 
