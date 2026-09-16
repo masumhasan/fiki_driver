@@ -13,22 +13,20 @@ export const metadata: Metadata = {
 
 function Brand() {
   return (
-    <div className="flex items-center gap-3">
-      <span className="grid size-12 place-items-center rounded-[15px] bg-card">
-        <Image
-          src="/logo.png"
-          alt=""
-          width={48}
-          height={48}
-          className="size-10"
-          priority
-        />
-      </span>
-      <div className="leading-none">
-        <p className="text-xl font-bold tracking-[-0.02em] text-primary-foreground">
+    <div className="flex flex-col items-center text-center">
+      <Image
+        src="/fiki-logo.png"
+        alt="FIKI Transit Logo"
+        width={80}
+        height={80}
+        className="size-16 sm:size-20 object-contain drop-shadow-xs"
+        priority
+      />
+      <div className="mt-2.5 leading-none">
+        <p className="text-xl font-black tracking-[-0.03em] text-primary sm:text-[22px]">
           FIKI TRANSIT
         </p>
-        <p className="mt-1.5 text-xs font-semibold tracking-[0.16em] text-secondary">
+        <p className="mt-1.5 text-[11px] font-bold tracking-[0.18em] text-secondary uppercase">
           DRIVER PORTAL
         </p>
       </div>
@@ -63,10 +61,8 @@ export default function LoginPage() {
           className="pointer-events-none absolute bottom-0 left-0 w-[25%] max-w-48"
         />
 
-        <div className="relative z-10 flex h-full flex-col px-[7%] py-[5vh]">
-          <Brand />
-
-          <div className="mt-[11vh]">
+        <div className="relative z-10 flex h-full flex-col px-[7%] py-[6vh]">
+          <div className="mt-[4vh] xl:mt-[6vh]">
             <h1 className="text-[clamp(2.5rem,4vw,3.75rem)] font-bold leading-[1.04] tracking-[-0.04em]">
               Welcome Back,
               <span className="mt-2 block text-secondary">Driver</span>
@@ -108,29 +104,12 @@ export default function LoginPage() {
 
       <section className="h-svh max-w-full overflow-x-hidden overflow-y-auto lg:ml-[50%]">
         <div className="flex min-h-full min-w-0 max-w-full flex-col px-5 py-5 sm:px-8 lg:px-10 lg:py-7 xl:px-14">
-          <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <span className="grid size-11 place-items-center rounded-xl bg-card">
-              <Image
-                src="/logo.png"
-                alt=""
-                width={48}
-                height={48}
-                className="size-9"
-                priority
-              />
-            </span>
-            <div className="leading-none text-primary">
-              <p className="text-lg font-bold tracking-[-0.02em]">
-                FIKI TRANSIT
-              </p>
-              <p className="mt-1.5 text-[0.65rem] font-semibold tracking-[0.16em] text-secondary">
-                DRIVER PORTAL
-              </p>
+          <div className="my-auto min-w-0 max-w-full py-6">
+            <div className="mx-auto mb-6 flex w-full max-w-130 justify-center">
+              <Brand />
             </div>
-          </div>
 
-          <div className="my-auto min-w-0 max-w-full">
-            <div className="mx-auto w-full max-w-130 rounded-[22px] border border-border bg-card px-6 py-7 sm:px-8 sm:py-8">
+            <div className="mx-auto w-full max-w-130 rounded-[22px] border border-border bg-card px-6 py-7 sm:px-8 sm:py-8 shadow-xs">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">
                   Sign In
@@ -179,5 +158,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-
