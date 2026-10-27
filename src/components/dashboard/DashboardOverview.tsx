@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ShiftAlertModal } from "./ShiftAlertModal";
+import { ShiftForm } from "./ShiftForm";
 import { cn } from "@/lib/utils";
 
 function formatTimeTo12Hour(timeStr?: string): string {
@@ -807,6 +808,8 @@ export function DashboardOverview() {
   const [shiftStatus, setShiftStatus] = useState<string | null>(null);
   const [shiftFuel, setShiftFuel] = useState<string | null>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
+  const [pendingReportShift, setPendingReportShift] = useState<any>(null);
+  const [showEndShiftModal, setShowEndShiftModal] = useState(false);
   const [showShiftAlert, setShowShiftAlert] = useState(false);
   const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "completed" | "missed">("today");
   const [pages, setPages] = useState({ today: 1, upcoming: 1, completed: 1, missed: 1 });
@@ -1015,6 +1018,11 @@ export function DashboardOverview() {
               setShiftStatus(null);
               setShiftFuel(null);
             }
+            if (res.data.pendingEndReportShift) {
+              setPendingReportShift(res.data.pendingEndReportShift);
+            } else {
+              setPendingReportShift(null);
+            }
             setTodayShift({
               ...(res.data.shift || {}),
               todayScheduleHours: res.data.todayScheduleHours || res.data.shift?.todayScheduleHours || res.data.todaySchedule?.hoursText || "Day Off",
@@ -1023,6 +1031,7 @@ export function DashboardOverview() {
             setShiftStatus(null);
             setShiftFuel(null);
             setTodayShift(null);
+            setPendingReportShift(null);
           }
         }),
         getDriverTripsApi(token, tabToFetch, pageToFetch, 10).then((res) => {
@@ -1093,8 +1102,13 @@ export function DashboardOverview() {
       const res = await updateDriverTripStatusApi(token, tripId, nextStatus);
       if (res.success) {
         fetchTrips(activeTab, pages[activeTab] || 1);
+        if ((res as any).shiftAutoEnded || (res as any).isFinalTrip) {
+          setShowEndShiftModal(true);
+        }
       } else if (res.error?.code === "SHIFT_NOT_STARTED") {
         setShowShiftAlert(true);
+      } else if (res.error?.message) {
+        alert(res.error.message);
       }
     }
   };
@@ -1154,6 +1168,33 @@ export function DashboardOverview() {
       <h1 id="dashboard-title" className="sr-only">
         Driver dashboard for {formattedDate}
       </h1>
+
+      {pendingReportShift && (
+        <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500 text-white font-bold text-base mt-0.5">
+                !
+              </span>
+              <div>
+                <h3 className="font-bold text-sm text-amber-950">
+                  End-of-Shift Report Required
+                </h3>
+                <p className="mt-0.5 text-xs text-amber-900/90 leading-relaxed">
+                  Your shift was ended after completing your final trip. Please submit your End-of-Shift Report before starting your next shift.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowEndShiftModal(true)}
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-amber-600 px-4 text-xs font-bold text-white hover:bg-amber-700 transition-colors shadow-xs shrink-0 cursor-pointer"
+            >
+              Submit Report Now
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {loading ? (
@@ -1322,6 +1363,19 @@ export function DashboardOverview() {
         isOpen={showShiftAlert}
         onClose={() => setShowShiftAlert(false)}
       />
+
+      {showEndShiftModal && (
+        <ShiftForm
+          mode="end"
+          pendingReportShift={pendingReportShift || { shiftDate: new Date().toISOString().split("T")[0] }}
+          onClose={() => setShowEndShiftModal(false)}
+          onSuccess={() => {
+            setShowEndShiftModal(false);
+            setPendingReportShift(null);
+            fetchTrips(activeTab, pages[activeTab] || 1);
+          }}
+        />
+      )}
     </section>
   );
 }
