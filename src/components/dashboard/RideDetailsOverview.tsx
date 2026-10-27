@@ -12,6 +12,7 @@ import {
   getTodayShiftApi,
 } from "@/lib/api";
 import { ShiftAlertModal } from "./ShiftAlertModal";
+import { ShiftForm } from "./ShiftForm";
 import { cn } from "@/lib/utils";
 
 import {
@@ -928,6 +929,8 @@ export function RideDetailsOverview() {
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [noShowLoading, setNoShowLoading] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [showFinalTripModal, setShowFinalTripModal] = useState(false);
+  const [showEndShiftModal, setShowEndShiftModal] = useState(false);
 
   const fetchTrip = async () => {
     if (typeof window === "undefined") return;
@@ -988,8 +991,13 @@ export function RideDetailsOverview() {
     const res = await updateDriverTripStatusApi(token, trip._id, newStatus);
     if (res.success) {
       fetchTrip();
+      if ((res as any).shiftAutoEnded || (res as any).isFinalTrip) {
+        setShowFinalTripModal(true);
+      }
     } else if (res.error?.code === "SHIFT_NOT_STARTED") {
       setShowShiftAlert(true);
+    } else if (res.error?.message) {
+      alert(res.error.message);
     }
   };
 
@@ -1022,9 +1030,15 @@ export function RideDetailsOverview() {
     if (res.success) {
       setShowSignatureModal(false);
       fetchTrip();
+      if ((res as any).shiftAutoEnded || (res as any).isFinalTrip) {
+        setShowFinalTripModal(true);
+      }
     } else if (res.error?.code === "SHIFT_NOT_STARTED") {
       setShowSignatureModal(false);
       setShowShiftAlert(true);
+    } else if (res.error?.message) {
+      setShowSignatureModal(false);
+      alert(res.error.message);
     }
   };
 
@@ -1221,28 +1235,38 @@ export function RideDetailsOverview() {
   const pickupAddress =
     trip.pickupLocation?.address ||
     trip.streetAddress ||
-    "1204 NW 14th Ave, Miami, FL";
+    trip.returnPickupAddress ||
+    "Pickup Location";
   const dropoffAddress =
     trip.dropoffLocation?.address ||
+    trip.destinationAddress ||
     trip.returnDestinationAddress ||
-    "1611 NW 12th Ave, Miami, FL";
+    "Dropoff Location";
 
   const rawDate = trip.pickupDate || trip.startDate || trip.createdAt;
-  const pickupDateStr = rawDate
-    ? (/^\d{4}-\d{2}-\d{2}$/.test(String(rawDate).trim())
-      ? new Date(String(rawDate).trim() + "T00:00:00").toLocaleDateString("en-US", {
+  let pickupDateStr = "—";
+  if (rawDate) {
+    if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(rawDate.trim())) {
+      const [year, month, day] = rawDate.trim().substring(0, 10).split("-").map(Number);
+      const noonUtc = new Date(Date.UTC(year, month - 1, day, 18, 0, 0));
+      pickupDateStr = noonUtc.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
         timeZone: "America/Chicago",
-      })
-      : new Date(rawDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "America/Chicago",
-      }))
-    : "—";
+      });
+    } else {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        pickupDateStr = d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "America/Chicago",
+        });
+      }
+    }
+  }
   const pickupTimeStr = trip.pickupTime ? formatTimeTo12Hour(trip.pickupTime) : "—";
   const dropoffTimeStr = trip.appointmentTime ? formatTimeTo12Hour(trip.appointmentTime) : null;
 
@@ -1302,6 +1326,10 @@ export function RideDetailsOverview() {
     statusBadgeLabel = "No Show Up";
   } else if (trip.status === "CANCELLED") {
     statusBadgeLabel = "Cancelled";
+  } else if (trip.status === "REQUESTED") {
+    statusBadgeLabel = "Requested / Pending Acceptance";
+  } else if (trip.status === "MISSED") {
+    statusBadgeLabel = "Missed";
   }
 
   const passengerDetails: DetailItem[] = [
@@ -1610,6 +1638,61 @@ export function RideDetailsOverview() {
             <img src={passengerAvatarUrl} alt="Passenger Full" className="w-full h-auto max-h-[90vh] object-contain" />
           </div>
         </div>
+      )}
+      {/* Final Trip Auto-End Notification Modal */}
+      {showFinalTripModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl text-center">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 mb-4">
+              <Check className="size-8 stroke-[2.5]" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground">
+              Final Trip Completed!
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              All assigned trips for today have been completed. Your shift has been automatically ended.
+            </p>
+            <div className="mt-3.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 text-left">
+              <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+                Action Required Before Next Shift
+              </p>
+              <p className="mt-1 font-normal text-amber-800 text-[11px] leading-relaxed">
+                You must submit your End-of-Shift Report (ending odometer reading & vehicle inspection) before you can start your next shift.
+              </p>
+            </div>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFinalTripModal(false);
+                  setShowEndShiftModal(true);
+                }}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                Submit End-of-Shift Report Now
+              </button>
+              <Link
+                href="/schedule"
+                className="w-full rounded-xl border border-border py-2 text-xs font-bold text-muted-foreground hover:bg-muted transition-colors inline-block"
+              >
+                View Schedule & Attendance
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEndShiftModal && (
+        <ShiftForm
+          mode="end"
+          pendingReportShift={{ shiftDate: new Date().toISOString().split("T")[0] }}
+          onClose={() => setShowEndShiftModal(false)}
+          onSuccess={() => {
+            setShowEndShiftModal(false);
+            fetchTrip();
+          }}
+        />
       )}
     </section>
   );
