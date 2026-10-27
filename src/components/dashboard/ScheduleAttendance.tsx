@@ -126,6 +126,7 @@ export function ScheduleAttendance() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [activeTripAlert, setActiveTripAlert] = useState(false);
 
   useEffect(() => {
     setCurrentTime(new Date());
@@ -185,6 +186,9 @@ export function ScheduleAttendance() {
 
   const isInProgress = shift?.status === "IN_PROGRESS";
   const isCompleted = shift?.status === "COMPLETED";
+  const hasActiveTrip = Boolean(
+    summaryData?.tripSummary?.inProgress && summaryData.tripSummary.inProgress > 0
+  );
 
   // Format Started time
   const startedDisplay = shift?.startedAt
@@ -321,8 +325,64 @@ export function ScheduleAttendance() {
               </div>
             )}
           </div>
+
+          {/* ── Pending End-of-Shift Report Required Banner ── */}
+          {pendingReportShift && (
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-400 bg-amber-50 p-4 text-xs text-amber-900 shadow-sm">
+              <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="font-bold text-sm text-amber-950">
+                  End-of-Shift Report Required
+                </p>
+                <p className="mt-1 leading-relaxed text-amber-900/90">
+                  Your previous shift was ended after completing your final trip. You must submit your End-of-Shift Report (ending odometer reading & vehicle inspection) before you can start your next shift.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShiftModal("end")}
+                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition-colors shadow-xs cursor-pointer"
+                >
+                  Submit End-of-Shift Report
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Active Trip In Progress Shift Protection Banner ── */}
+          {hasActiveTrip && isInProgress && (
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/90 p-3.5 text-xs text-blue-900">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-blue-600" />
+              <div>
+                <p className="font-semibold text-blue-950">Active Trip In Progress</p>
+                <p className="mt-0.5 text-blue-800/90 leading-relaxed">
+                  You currently have {summaryData?.tripSummary?.inProgress} active trip underway. Your shift cannot be ended until all active trips are completed. After completing your final trip, your shift will auto-end.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Active Trip Alert Popup Banner ── */}
+          {activeTripAlert && (
+            <div className="mt-3 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-3.5 text-xs text-rose-900 animate-in fade-in">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-600" />
+              <div className="flex-1">
+                <p className="font-semibold text-rose-950">Cannot End Shift Yet</p>
+                <p className="mt-0.5 text-rose-800/90 leading-relaxed">
+                  You have an active trip currently in progress. Please complete your active trip first. Shifts can only be ended after active trips are completed.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTripAlert(false)}
+                className="text-xs font-bold text-rose-700 hover:text-rose-900 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* ── Schedule enforcement banner ── */}
-          {scheduleCheck && !scheduleCheck.allowStart && !isInProgress && (
+          {scheduleCheck && !scheduleCheck.allowStart && !isInProgress && !pendingReportShift && (
             <div className={cn(
               "mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 text-xs leading-5",
               !scheduleCheck.isWorkingDay
@@ -352,7 +412,18 @@ export function ScheduleAttendance() {
           )}
 
           <div className="mt-4 grid grid-cols-3 gap-3">
-            {isInProgress ? (
+            {pendingReportShift ? (
+              <button
+                type="button"
+                onClick={() => setShiftModal("end")}
+                className="flex min-h-28 flex-col items-center justify-center rounded-xl p-3 text-center text-xs font-bold transition-colors bg-amber-100 text-amber-800 hover:bg-amber-200 cursor-pointer"
+              >
+                <span className="grid size-12 place-items-center rounded-xl bg-amber-500 text-white">
+                  <AlertCircle className="size-5" />
+                </span>
+                <span className="mt-3">REPORT REQUIRED</span>
+              </button>
+            ) : isInProgress ? (
               <button
                 type="button"
                 onClick={() => setShiftModal("start")}
@@ -407,24 +478,40 @@ export function ScheduleAttendance() {
 
             <button
               type="button"
-              onClick={() => setShiftModal("end")}
+              onClick={() => {
+                if (hasActiveTrip) {
+                  setActiveTripAlert(true);
+                  return;
+                }
+                setActiveTripAlert(false);
+                setShiftModal("end");
+              }}
               disabled={!isInProgress}
+              title={hasActiveTrip ? "Cannot end shift while active trip is in progress" : undefined}
               className={cn(
                 "flex min-h-28 flex-col items-center justify-center rounded-xl p-3 text-center text-xs font-bold transition-colors",
                 isInProgress
-                  ? "bg-red-100 text-red-600 hover:bg-red-200"
+                  ? hasActiveTrip
+                    ? "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-300"
+                    : "bg-red-100 text-red-600 hover:bg-red-200"
                   : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed",
               )}
             >
               <span
                 className={cn(
                   "grid size-12 place-items-center rounded-xl text-white",
-                  isInProgress ? "bg-red-500" : "bg-muted-foreground",
+                  isInProgress
+                    ? hasActiveTrip
+                      ? "bg-slate-400"
+                      : "bg-red-500"
+                    : "bg-muted-foreground",
                 )}
               >
                 <Square className="size-4 fill-current" />
               </span>
-              <span className="mt-3">END SHIFT</span>
+              <span className="mt-3">
+                {hasActiveTrip && isInProgress ? "TRIP IN PROGRESS" : "END SHIFT"}
+              </span>
             </button>
 
             <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-border bg-muted p-3 text-center text-xs font-bold text-muted-foreground">

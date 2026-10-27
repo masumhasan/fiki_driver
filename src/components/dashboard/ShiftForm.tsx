@@ -279,7 +279,7 @@ export function ShiftForm({
                 Action Required: Complete Last Shift Report
               </p>
               <p className="mt-1 text-amber-800">
-                Your shift on <strong>{pendingReportShift.shiftDate}</strong> was auto-ended at your scheduled shift end time ({pendingReportShift.endedAt ? new Date(pendingReportShift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Chicago" }) : "4:00 PM"} CT).
+                Your shift on <strong>{pendingReportShift.shiftDate}</strong> was ended{pendingReportShift.autoEnded ? ' after your final trip of the day' : ''} ({pendingReportShift.endedAt ? new Date(pendingReportShift.endedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Chicago" }) : "4:00 PM"} CT).
                 Please enter your ending odometer and vehicle condition to complete your report before starting your next shift.
               </p>
             </div>
